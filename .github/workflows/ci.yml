@@ -29,14 +29,32 @@ jobs:
           cache: true
       - name: Resolve dependencies
         run: flutter pub get
+      - name: Verify dependency lockfile
+        run: git diff --exit-code pubspec.lock
       - name: Analyze
         run: flutter analyze
       - name: Test
         run: flutter test
       - name: Verify Android minimum SDK
         run: grep -F 'minSdk = 24' android/app/build.gradle.kts
-      - name: Build debug APK
+      - name: Reject backend secret marker from Android source
+        shell: bash
         run: |
-          flutter build apk --debug \
-            --dart-define=SUPABASE_URL=https://example.supabase.co \
-            --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_test
+          set -euo pipefail
+          if grep -R -n --binary-files=without-match -F 'TRIPO_API_KEY'             lib android pubspec.yaml; then
+            echo 'TRIPO_API_KEY must never be referenced by the Android client.'
+            exit 1
+          fi
+      - name: Build release APK with public config only
+        run: |
+          flutter build apk --release             --dart-define=SUPABASE_URL=https://example.supabase.co             --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_test
+      - name: Verify release APK excludes backend secret marker
+        shell: bash
+        run: |
+          set -euo pipefail
+          scan_dir="$(mktemp -d)"
+          unzip -q build/app/outputs/flutter-apk/app-release.apk -d "$scan_dir"
+          if grep -R -a -F 'TRIPO_API_KEY' "$scan_dir"; then
+            echo 'Backend secret marker found in release APK.'
+            exit 1
+          fi
