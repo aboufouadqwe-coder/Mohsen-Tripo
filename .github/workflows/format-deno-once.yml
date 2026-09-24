@@ -1,0 +1,40 @@
+name: Format Deno Once
+
+on:
+  push:
+    branches:
+      - feature/android-mvp
+    paths:
+      - ".github/format-deno-request"
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Format Edge Function sources
+        run: |
+          cd supabase
+          deno fmt functions
+      - name: Commit exact Deno formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add supabase/functions
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "No formatting changes needed."
+            exit 0
+          fi
+          git commit -m "style: format Deno Edge functions"
+          git push origin HEAD:feature/android-mvp
