@@ -32,6 +32,8 @@ final class SupabaseProjectDataSource implements ProjectDataSource {
 
   static const _selection =
       'id,name,reference_image_path,template_id,identity_prompt';
+  static const _defaultTemplateId =
+      '00000000-0000-0000-0000-000000000001';
 
   @override
   Future<List<Map<String, Object?>>> listForOwner(String ownerId) async {
@@ -58,6 +60,7 @@ final class SupabaseProjectDataSource implements ProjectDataSource {
           'owner_id': ownerId,
           'name': name,
           'identity_prompt': identityPrompt,
+          'template_id': _defaultTemplateId,
         })
         .select(_selection)
         .single();
