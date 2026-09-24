@@ -9,13 +9,13 @@ on:
       - main
 
 jobs:
-  flutter-test:
+  flutter:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: app
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: 3.47.0
@@ -23,5 +23,14 @@ jobs:
           cache: true
       - name: Resolve dependencies
         run: flutter pub get
-      - name: Flutter tests
+      - name: Analyze
+        run: flutter analyze
+      - name: Test
         run: flutter test
+      - name: Verify Android minimum SDK
+        run: grep -F 'minSdk = 24' android/app/build.gradle.kts
+      - name: Build debug APK
+        run: |
+          flutter build apk --debug \
+            --dart-define=SUPABASE_URL=https://example.supabase.co \
+            --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_test
