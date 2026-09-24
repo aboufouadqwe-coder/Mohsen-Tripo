@@ -15,10 +15,10 @@ Deno.test("createTextToImage returns task id on code 0", async () => {
 
   const client = new TripoClient({
     apiKey: "test-key",
-    fetcher: async (input, init) => {
+    fetcher: (input, init) => {
       requestedUrl = String(input);
       requestedBody = JSON.parse(String(init?.body));
-      return jsonResponse({ code: 0, data: { task_id: "task_image_1" } });
+      return Promise.resolve(jsonResponse({ code: 0, data: { task_id: "task_image_1" } }));
     },
   });
 

@@ -6,10 +6,12 @@ export type BuildAssetPromptInput = {
 };
 
 function normalizeInline(value: string): string {
-  return value
-    .replace(/[\u0000-\u001F\u007F]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  let normalized = "";
+  for (const character of value) {
+    const code = character.codePointAt(0) ?? 0;
+    normalized += code <= 0x1f || code === 0x7f ? " " : character;
+  }
+  return normalized.replace(/\s+/g, " ").trim();
 }
 
 function requiredInline(value: string, fieldName: string): string {
