@@ -30,3 +30,20 @@ jobs:
         run: supabase test db
       - name: Lint database
         run: supabase db lint --level error
+
+  edge-contract:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: supabase
+    steps:
+      - uses: actions/checkout@v5
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Run Edge contract tests
+        run: deno task test
+      - name: Check formatting
+        run: deno fmt --check functions
+      - name: Lint Edge functions
+        run: deno lint functions
