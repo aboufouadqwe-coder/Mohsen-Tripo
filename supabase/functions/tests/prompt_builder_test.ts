@@ -1,8 +1,4 @@
-import {
-  assertEquals,
-  assertStringIncludes,
-  assertThrows,
-} from "@std/assert";
+import { assertEquals, assertStringIncludes, assertThrows } from "@std/assert";
 import { buildAssetPrompt } from "../_shared/prompt_builder.ts";
 
 Deno.test("buildAssetPrompt keeps deterministic semantic order", () => {

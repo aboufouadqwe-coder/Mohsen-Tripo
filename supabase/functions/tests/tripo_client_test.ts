@@ -1,8 +1,4 @@
-import {
-  assertEquals,
-  assertInstanceOf,
-  assertRejects,
-} from "@std/assert";
+import { assertEquals, assertInstanceOf, assertRejects } from "@std/assert";
 import { ProviderError } from "../_shared/provider_error.ts";
 import { TripoClient } from "../_shared/tripo_client.ts";
 
@@ -63,10 +59,11 @@ Deno.test("missing task id throws malformed_response", async () => {
   });
 
   const error = await assertRejects(
-    () => client.createImageToImage({
-      input: "https://example.test/reference.png",
-      prompt: "same character head",
-    }),
+    () =>
+      client.createImageToImage({
+        input: "https://example.test/reference.png",
+        prompt: "same character head",
+      }),
   );
 
   assertInstanceOf(error, ProviderError);
