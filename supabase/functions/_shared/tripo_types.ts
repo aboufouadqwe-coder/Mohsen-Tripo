@@ -3,7 +3,10 @@ export type TripoTaskStatus =
   | "running"
   | "success"
   | "failed"
-  | "cancelled";
+  | "cancelled"
+  | "unknown"
+  | "banned"
+  | "expired";
 
 export type TripoCreateTextToImageRequest = {
   prompt: string;
