@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'generation_state.dart';
+
 final class PartRequestTile extends StatelessWidget {
   const PartRequestTile({
     super.key,
@@ -7,26 +9,85 @@ final class PartRequestTile extends StatelessWidget {
     required this.promptFragment,
     required this.enabled,
     required this.onEnabledChanged,
+    this.generationState,
+    this.onRetry,
   });
 
   final String label;
   final String promptFragment;
   final bool enabled;
   final ValueChanged<bool> onEnabledChanged;
+  final GenerationPartState? generationState;
+  final VoidCallback? onRetry;
+
+  String _statusLabel(GenerationPartState state) {
+    return switch (state.phase) {
+      GenerationPartPhase.submitting => 'جارٍ إرسال المهمة…',
+      GenerationPartPhase.queued => 'في قائمة الانتظار',
+      GenerationPartPhase.running => 'جارٍ التوليد',
+      GenerationPartPhase.success => 'اكتمل',
+      GenerationPartPhase.failed => 'فشل',
+      GenerationPartPhase.cancelled => 'أُلغي',
+    };
+  }
+
+  double _progress(double value) {
+    if (value < 0) return 0;
+    if (value > 1) return 1;
+    return value;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final state = generationState;
+
     return Card(
-      child: SwitchListTile(
-        value: enabled,
-        onChanged: onEnabledChanged,
-        title: Text(label),
-        subtitle: Text(
-          promptFragment,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        secondary: const Icon(Icons.drag_handle),
+      child: Column(
+        children: [
+          SwitchListTile(
+            value: enabled,
+            onChanged: onEnabledChanged,
+            title: Text(label),
+            subtitle: Text(
+              promptFragment,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            secondary: const Icon(Icons.drag_handle),
+          ),
+          if (state != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: Text(_statusLabel(state))),
+                      if (state.isFailure && onRetry != null)
+                        TextButton.icon(
+                          onPressed: onRetry,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('إعادة'),
+                        ),
+                    ],
+                  ),
+                  if (state.isActive &&
+                      state.phase != GenerationPartPhase.submitting)
+                    LinearProgressIndicator(
+                      value: _progress(state.progress),
+                    ),
+                  if (state.errorCode != null && state.isFailure)
+                    Text(
+                      'الخطأ: ${state.errorCode}',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

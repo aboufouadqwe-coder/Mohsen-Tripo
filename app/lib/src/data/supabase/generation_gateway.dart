@@ -18,6 +18,14 @@ abstract interface class GenerationGateway {
   Future<String> generateModel(String assetResultId);
 }
 
+abstract interface class ActiveGenerationJobsGateway {
+  Future<List<GenerationJob>> listActiveJobs(String projectId);
+}
+
+abstract interface class GenerationJobDataSource {
+  Future<List<Map<String, Object?>>> listActiveJobs(String projectId);
+}
+
 abstract interface class FunctionInvoker {
   Future<Map<String, Object?>> invoke(
     String functionName,
@@ -25,10 +33,15 @@ abstract interface class FunctionInvoker {
   );
 }
 
-final class DefaultGenerationGateway implements GenerationGateway {
-  const DefaultGenerationGateway(this._invoker);
+final class DefaultGenerationGateway
+    implements GenerationGateway, ActiveGenerationJobsGateway {
+  const DefaultGenerationGateway(
+    this._invoker, {
+    GenerationJobDataSource? jobDataSource,
+  }) : _jobDataSource = jobDataSource;
 
   final FunctionInvoker _invoker;
+  final GenerationJobDataSource? _jobDataSource;
 
   @override
   Future<String> generateSourceImage({
@@ -76,11 +89,26 @@ final class DefaultGenerationGateway implements GenerationGateway {
         'refresh-generation-job',
         {'job_id': jobId},
       );
-      return _jobFromResponse(response);
+      return _jobFromFunctionResponse(response);
     } on AppFailure {
       rethrow;
     } catch (_) {
       throw AppFailure.function();
+    }
+  }
+
+  @override
+  Future<List<GenerationJob>> listActiveJobs(String projectId) async {
+    final source = _jobDataSource;
+    if (source == null) return const [];
+
+    try {
+      final rows = await source.listActiveJobs(projectId);
+      return rows.map(_jobFromDatabaseRow).toList(growable: false);
+    } on AppFailure {
+      rethrow;
+    } catch (_) {
+      throw AppFailure.data();
     }
   }
 
@@ -102,19 +130,54 @@ final class DefaultGenerationGateway implements GenerationGateway {
     }
   }
 
-  GenerationJob _jobFromResponse(Map<String, Object?> response) {
-    final id = response['job_id'];
-    final projectId = response['project_id'];
-    final provider = response['provider'];
-    final operation = response['operation'];
-    final status = response['status'];
-    final progress = response['progress'];
-    final partKey = response['part_key'];
-    final providerTaskId = response['provider_task_id'];
-    final assetResultId = response['asset_result_id'];
-    final storagePath = response['storage_path'];
-    final mimeType = response['mime_type'];
+  GenerationJob _jobFromFunctionResponse(Map<String, Object?> response) {
+    return _jobFromFields(
+      id: response['job_id'],
+      projectId: response['project_id'],
+      provider: response['provider'],
+      operation: response['operation'],
+      status: response['status'],
+      progress: response['progress'],
+      partKey: response['part_key'],
+      providerTaskId: response['provider_task_id'],
+      assetResultId: response['asset_result_id'],
+      storagePath: response['storage_path'],
+      mimeType: response['mime_type'],
+      errorCode: response['error_code'],
+      errorMessage: response['error_message'],
+    );
+  }
 
+  GenerationJob _jobFromDatabaseRow(Map<String, Object?> row) {
+    return _jobFromFields(
+      id: row['id'],
+      projectId: row['project_id'],
+      provider: row['provider'],
+      operation: row['operation'],
+      status: row['status'],
+      progress: row['progress'],
+      partKey: row['part_key'],
+      providerTaskId: row['provider_task_id'],
+      errorCode: row['error_code'],
+      errorMessage: row['error_message'],
+    );
+  }
+
+  GenerationJob _jobFromFields({
+    required Object? id,
+    required Object? projectId,
+    required Object? provider,
+    required Object? operation,
+    required Object? status,
+    required Object? progress,
+    Object? partKey,
+    Object? providerTaskId,
+    Object? assetResultId,
+    Object? storagePath,
+    Object? mimeType,
+    Object? errorCode,
+    Object? errorMessage,
+  }) {
     if (id is! String ||
         projectId is! String ||
         provider is! String ||
@@ -125,7 +188,9 @@ final class DefaultGenerationGateway implements GenerationGateway {
         (providerTaskId != null && providerTaskId is! String) ||
         (assetResultId != null && assetResultId is! String) ||
         (storagePath != null && storagePath is! String) ||
-        (mimeType != null && mimeType is! String)) {
+        (mimeType != null && mimeType is! String) ||
+        (errorCode != null && errorCode is! String) ||
+        (errorMessage != null && errorMessage is! String)) {
       throw AppFailure.function();
     }
 
@@ -150,8 +215,8 @@ final class DefaultGenerationGateway implements GenerationGateway {
       partKey: partKey as String?,
       providerTaskId: providerTaskId as String?,
       progress: progress.toDouble(),
-      errorCode: response['error_code'] as String?,
-      errorMessage: response['error_message'] as String?,
+      errorCode: errorCode as String?,
+      errorMessage: errorMessage as String?,
       assetResultId: assetResultId as String?,
       storagePath: storagePath as String?,
       mimeType: mimeType as String?,

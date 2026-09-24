@@ -40,6 +40,7 @@ Future<void> main() async {
       ),
       generationGateway: DefaultGenerationGateway(
         SupabaseFunctionInvoker(client),
+        jobDataSource: SupabaseGenerationJobDataSource(client),
       ),
       currentUserId: () => requireCurrentSupabaseUserId(client),
     ),

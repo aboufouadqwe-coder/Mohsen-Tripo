@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../domain/templates/template_part.dart';
+import 'generation_state.dart';
 import 'part_request_tile.dart';
 
 final class EditableTemplatePart {
@@ -97,9 +98,13 @@ final class TemplateEditor extends StatefulWidget {
   const TemplateEditor({
     super.key,
     required this.controller,
+    this.generationState = const {},
+    this.onRetry,
   });
 
   final TemplateEditorController controller;
+  final Map<String, GenerationPartState> generationState;
+  final ValueChanged<String>? onRetry;
 
   @override
   State<TemplateEditor> createState() => _TemplateEditorState();
@@ -174,6 +179,10 @@ final class _TemplateEditorState extends State<TemplateEditor> {
               label: part.label,
               promptFragment: part.promptFragment,
               enabled: part.enabled,
+              generationState: widget.generationState[part.key],
+              onRetry: widget.onRetry == null
+                  ? null
+                  : () => widget.onRetry!(part.key),
               onEnabledChanged: (enabled) {
                 widget.controller.setEnabled(part.key, enabled);
               },

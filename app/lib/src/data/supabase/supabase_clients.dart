@@ -138,6 +138,31 @@ final class SupabaseFunctionInvoker implements FunctionInvoker {
   }
 }
 
+final class SupabaseGenerationJobDataSource implements GenerationJobDataSource {
+  const SupabaseGenerationJobDataSource(this._client);
+
+  final SupabaseClient _client;
+
+  @override
+  Future<List<Map<String, Object?>>> listActiveJobs(
+    String projectId,
+  ) async {
+    final rows = await _client
+        .from('generation_jobs')
+        .select(
+          'id,project_id,part_key,provider,operation,provider_task_id,'
+          'status,progress,error_code,error_message',
+        )
+        .eq('project_id', projectId)
+        .inFilter('status', const ['queued', 'running'])
+        .order('created_at');
+
+    return rows
+        .map((row) => Map<String, Object?>.from(row))
+        .toList(growable: false);
+  }
+}
+
 final class SupabaseReferenceStoragePort implements ReferenceStoragePort {
   const SupabaseReferenceStoragePort(this._client);
 
