@@ -249,7 +249,8 @@ export function providerArtifactUrls(
     return artifacts;
   }
 
-  const imageUrl = outputString(output, "image_url") ??
+  const imageUrl = outputString(output, "generated_image_url") ??
+    outputString(output, "image_url") ??
     outputString(output, "url") ??
     firstStringFromArray(output, "image_urls") ??
     firstStringFromArray(output, "images");
