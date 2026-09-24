@@ -128,3 +128,43 @@ Deno.test("image-to-model pins exact MVP model", async () => {
   assertEquals(requestedBody?.texture, true);
   assertEquals(requestedBody?.pbr, true);
 });
+
+Deno.test("getTask accepts queued response without progress", async () => {
+  const client = new TripoClient({
+    apiKey: "test-key",
+    fetcher: () =>
+      Promise.resolve(jsonResponse({
+        code: 0,
+        data: {
+          task_id: "task_queued",
+          type: "image_to_image",
+          status: "queued",
+        },
+      })),
+  });
+
+  const task = await client.getTask("task_queued");
+
+  assertEquals(task.status, "queued");
+  assertEquals(task.progress, 0);
+});
+
+Deno.test("getTask accepts Tripo terminal banned status", async () => {
+  const client = new TripoClient({
+    apiKey: "test-key",
+    fetcher: () =>
+      Promise.resolve(jsonResponse({
+        code: 0,
+        data: {
+          task_id: "task_banned",
+          type: "image_to_image",
+          status: "banned",
+        },
+      })),
+  });
+
+  const task = await client.getTask("task_banned");
+
+  assertEquals(task.status, "banned");
+  assertEquals(task.progress, 0);
+});
