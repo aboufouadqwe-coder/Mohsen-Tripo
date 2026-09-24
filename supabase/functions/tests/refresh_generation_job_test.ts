@@ -18,6 +18,7 @@ const baseJob = {
   id: "job-1",
   projectId: "project-1",
   partKey: "head",
+  provider: "tripo",
   providerTaskId: "task-1",
   operation: "image_to_image",
   status: "running",
