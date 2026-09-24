@@ -37,11 +37,11 @@ final class DefaultGenerationGateway
     implements GenerationGateway, ActiveGenerationJobsGateway {
   const DefaultGenerationGateway(
     this._invoker, {
-    GenerationJobDataSource? jobDataSource,
-  }) : _jobDataSource = jobDataSource;
+    this.jobDataSource,
+  });
 
   final FunctionInvoker _invoker;
-  final GenerationJobDataSource? _jobDataSource;
+  final GenerationJobDataSource? jobDataSource;
 
   @override
   Future<String> generateSourceImage({
@@ -99,7 +99,7 @@ final class DefaultGenerationGateway
 
   @override
   Future<List<GenerationJob>> listActiveJobs(String projectId) async {
-    final source = _jobDataSource;
+    final source = jobDataSource;
     if (source == null) return const [];
 
     try {
