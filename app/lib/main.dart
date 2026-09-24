@@ -8,6 +8,7 @@ import 'src/core/routing/app_router.dart';
 import 'src/data/supabase/generation_gateway.dart';
 import 'src/data/supabase/project_repository.dart';
 import 'src/data/supabase/reference_image_repository.dart';
+import 'src/data/supabase/results_repository.dart';
 import 'src/data/supabase/supabase_clients.dart';
 import 'src/data/supabase/template_repository.dart';
 import 'src/features/bootstrap/session_bootstrapper.dart';
@@ -37,6 +38,9 @@ Future<void> main() async {
       ),
       referenceImageRepository: DefaultReferenceImageRepository(
         SupabaseReferenceStoragePort(client),
+      ),
+      resultsRepository: DefaultResultsRepository(
+        dataSource: SupabaseResultsDataSource(client),
       ),
       generationGateway: DefaultGenerationGateway(
         SupabaseFunctionInvoker(client),

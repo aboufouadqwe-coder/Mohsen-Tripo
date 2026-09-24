@@ -7,6 +7,7 @@ import '../../features/bootstrap/session_bootstrapper.dart';
 import 'generation_gateway.dart';
 import 'project_repository.dart';
 import 'reference_image_repository.dart';
+import 'results_repository.dart';
 import 'template_repository.dart';
 
 final class SupabaseAuthPort implements AuthPort {
@@ -160,6 +161,44 @@ final class SupabaseGenerationJobDataSource implements GenerationJobDataSource {
     return rows
         .map((row) => Map<String, Object?>.from(row))
         .toList(growable: false);
+  }
+}
+
+final class SupabaseResultsDataSource implements ResultsDataSource {
+  const SupabaseResultsDataSource(this._client);
+
+  final SupabaseClient _client;
+
+  @override
+  Future<List<Map<String, Object?>>> listHistoryRows(
+    String projectId,
+  ) async {
+    final rows = await _client
+        .from('generation_jobs')
+        .select(
+          'id,project_id,part_key,provider,operation,provider_task_id,'
+          'status,progress,error_code,error_message,created_at,'
+          'asset_results(id,project_id,generation_job_id,part_key,'
+          'storage_path,mime_type,width,height,created_at)',
+        )
+        .eq('project_id', projectId)
+        .order('created_at', ascending: false);
+
+    return rows
+        .map((row) => Map<String, Object?>.from(row))
+        .toList(growable: false);
+  }
+
+  @override
+  Future<String> createSignedUrl({
+    required String bucket,
+    required String path,
+    required int expiresIn,
+  }) {
+    return _client.storage.from(bucket).createSignedUrl(
+          path,
+          expiresIn,
+        );
   }
 }
 

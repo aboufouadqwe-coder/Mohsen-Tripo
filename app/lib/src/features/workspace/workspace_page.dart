@@ -5,11 +5,15 @@ import 'package:flutter/material.dart';
 import '../../data/supabase/generation_gateway.dart';
 import '../../data/supabase/project_repository.dart';
 import '../../data/supabase/reference_image_repository.dart';
+import '../../data/supabase/results_repository.dart';
 import '../../data/supabase/template_repository.dart';
+import '../../domain/assets/asset_result.dart';
 import '../../domain/generation/generation_job.dart';
 import '../../domain/projects/project.dart';
 import '../../domain/templates/asset_template.dart';
 import '../../domain/templates/builtin_templates.dart';
+import '../results/model_generation_controller.dart';
+import '../results/results_gallery.dart';
 import 'generation_batch_controller.dart';
 import 'job_polling_service.dart';
 import 'reference_image_picker.dart';
@@ -23,6 +27,7 @@ final class WorkspacePage extends StatefulWidget {
     required this.projectRepository,
     required this.templateRepository,
     required this.referenceImageRepository,
+    required this.resultsRepository,
     required this.generationGateway,
     required this.currentUserId,
   });
@@ -31,6 +36,7 @@ final class WorkspacePage extends StatefulWidget {
   final ProjectRepository projectRepository;
   final TemplateRepository templateRepository;
   final ReferenceImageRepository referenceImageRepository;
+  final ResultsRepository resultsRepository;
   final GenerationGateway generationGateway;
   final String Function() currentUserId;
 
@@ -43,8 +49,13 @@ final class _WorkspacePageState extends State<WorkspacePage> {
   AssetTemplate? _template;
   TemplateEditorController? _templateController;
   GenerationBatchController? _batchController;
+  JobPollingService? _modelPollingService;
+  ModelGenerationController? _modelController;
   String? _error;
   bool _loading = true;
+  int _resultsVersion = 0;
+  int _lastBatchTerminalCount = 0;
+  String? _lastModelTerminalJobId;
 
   @override
   void initState() {
@@ -58,10 +69,38 @@ final class _WorkspacePageState extends State<WorkspacePage> {
     _batchController
       ?..removeListener(_onBatchChanged)
       ..dispose();
+    _modelController
+      ?..removeListener(_onModelChanged)
+      ..dispose();
+    _modelPollingService?.dispose();
     super.dispose();
   }
 
   void _onBatchChanged() {
+    final controller = _batchController;
+    if (controller == null) return;
+
+    final terminalCount = controller.state.values
+        .where((part) => !part.isActive)
+        .length;
+    if (terminalCount > _lastBatchTerminalCount) {
+      _resultsVersion += 1;
+    }
+    _lastBatchTerminalCount = terminalCount;
+
+    if (mounted) setState(() {});
+  }
+
+  void _onModelChanged() {
+    final controller = _modelController;
+    final modelJob = controller?.job;
+
+    if (modelJob?.isTerminal == true &&
+        modelJob!.id != _lastModelTerminalJobId) {
+      _lastModelTerminalJobId = modelJob.id;
+      _resultsVersion += 1;
+    }
+
     if (mounted) setState(() {});
   }
 
@@ -101,11 +140,22 @@ final class _WorkspacePageState extends State<WorkspacePage> {
         ),
         projectId: project.id,
       );
+      final modelPollingService = JobPollingService(
+        gateway: widget.generationGateway,
+      );
+      final modelController = ModelGenerationController(
+        gateway: widget.generationGateway,
+        pollUntilTerminal: modelPollingService.pollUntilTerminal,
+      );
+
       batchController.addListener(_onBatchChanged);
+      modelController.addListener(_onModelChanged);
 
       if (!mounted) {
         templateController.dispose();
         batchController.dispose();
+        modelPollingService.dispose();
+        modelController.dispose();
         return;
       }
 
@@ -114,6 +164,8 @@ final class _WorkspacePageState extends State<WorkspacePage> {
         _template = template;
         _templateController = templateController;
         _batchController = batchController;
+        _modelPollingService = modelPollingService;
+        _modelController = modelController;
         _loading = false;
       });
 
@@ -226,6 +278,12 @@ final class _WorkspacePageState extends State<WorkspacePage> {
     unawaited(batchController.regeneratePart(partKey));
   }
 
+  Future<void> _generateModel(AssetResult asset) async {
+    final controller = _modelController;
+    if (controller == null) return;
+    await controller.generateFromImage(asset);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -243,6 +301,7 @@ final class _WorkspacePageState extends State<WorkspacePage> {
 
     final project = _project!;
     final batchController = _batchController;
+    final modelController = _modelController;
 
     return Scaffold(
       appBar: AppBar(title: Text(project.name)),
@@ -269,7 +328,7 @@ final class _WorkspacePageState extends State<WorkspacePage> {
             ),
             if (project.referenceImagePath != null) ...[
               const SizedBox(height: 8),
-              Text('المسار: ${project.referenceImagePath}'),
+              Text('المسار: ' + project.referenceImagePath!),
             ],
             const SizedBox(height: 24),
             Text(
@@ -306,6 +365,17 @@ final class _WorkspacePageState extends State<WorkspacePage> {
               controller: _templateController!,
               generationState: batchController?.state ?? const {},
               onRetry: project.referenceImagePath == null ? null : _retryPart,
+            ),
+            const SizedBox(height: 24),
+            ResultsGallery(
+              projectId: project.id,
+              repository: widget.resultsRepository,
+              refreshVersion: _resultsVersion,
+              onGenerateModel: _generateModel,
+              modelGenerationBusy: modelController?.isBusy ?? false,
+              activeModelAssetResultId:
+                  modelController?.activeAssetResultId,
+              modelJob: modelController?.job,
             ),
           ],
         ),

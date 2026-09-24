@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/supabase/generation_gateway.dart';
 import '../../data/supabase/project_repository.dart';
 import '../../data/supabase/reference_image_repository.dart';
+import '../../data/supabase/results_repository.dart';
 import '../../data/supabase/template_repository.dart';
 import '../../domain/projects/project.dart';
 import '../../features/projects/create_project_page.dart';
@@ -14,6 +15,7 @@ final class AppRouterDependencies {
     required this.projectRepository,
     required this.templateRepository,
     required this.referenceImageRepository,
+    required this.resultsRepository,
     required this.generationGateway,
     required this.currentUserId,
   });
@@ -21,6 +23,7 @@ final class AppRouterDependencies {
   final ProjectRepository projectRepository;
   final TemplateRepository templateRepository;
   final ReferenceImageRepository referenceImageRepository;
+  final ResultsRepository resultsRepository;
   final GenerationGateway generationGateway;
   final String Function() currentUserId;
 }
@@ -35,7 +38,7 @@ GoRouter buildAppRouter(AppRouterDependencies dependencies) {
           projectRepository: dependencies.projectRepository,
           onCreateProject: () => context.go('/projects/new'),
           onOpenProject: (Project project) {
-            context.go('/projects/${project.id}');
+            context.go('/projects/' + project.id);
           },
         ),
       ),
@@ -44,7 +47,7 @@ GoRouter buildAppRouter(AppRouterDependencies dependencies) {
         builder: (context, state) => CreateProjectPage(
           projectRepository: dependencies.projectRepository,
           onCreated: (project) {
-            context.go('/projects/${project.id}');
+            context.go('/projects/' + project.id);
           },
         ),
       ),
@@ -55,6 +58,7 @@ GoRouter buildAppRouter(AppRouterDependencies dependencies) {
           projectRepository: dependencies.projectRepository,
           templateRepository: dependencies.templateRepository,
           referenceImageRepository: dependencies.referenceImageRepository,
+          resultsRepository: dependencies.resultsRepository,
           generationGateway: dependencies.generationGateway,
           currentUserId: dependencies.currentUserId,
         ),

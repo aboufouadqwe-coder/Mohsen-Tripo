@@ -48,6 +48,12 @@ type RefreshGenerationJobDeps = {
   ) => Promise<PersistedOutput>;
 };
 
+type ProviderArtifactUrl = {
+  role: "primary" | "preview";
+  bucket: "generated-images" | "generated-models";
+  url: string;
+};
+
 function normalizedProgress(progress: number): number {
   return Math.max(0, Math.min(1, progress / 100));
 }
@@ -84,7 +90,11 @@ export function createRefreshGenerationJobHandler(
         throw new HttpError(404, "not_found", "Generation job was not found.");
       }
       if (!job.providerTaskId) {
-        throw new HttpError(409, "invalid_job", "Generation job is missing its provider task.");
+        throw new HttpError(
+          409,
+          "invalid_job",
+          "Generation job is missing its provider task.",
+        );
       }
 
       const task = await deps.getProviderTask(job.providerTaskId);
@@ -106,9 +116,10 @@ export function createRefreshGenerationJobHandler(
           status: task.status,
           progress,
           error_code: task.errorCode === undefined
-            ? `provider_${task.status}`
-            : `provider_${task.errorCode}`,
-          error_message: "The generation provider reported a terminal failure.",
+            ? "provider_" + task.status
+            : "provider_" + task.errorCode,
+          error_message:
+            "The generation provider reported a terminal failure.",
           completed_at: completedAt,
         });
         return jsonResponse(
@@ -165,19 +176,27 @@ type JobRow = {
   status: string;
 };
 
-async function ownsProject(userId: string, projectId: string): Promise<boolean> {
+async function ownsProject(
+  userId: string,
+  projectId: string,
+): Promise<boolean> {
   const project = await adminSelectOne<{ id: string }>("projects", {
     select: "id",
-    id: `eq.${projectId}`,
-    owner_id: `eq.${userId}`,
+    id: "eq." + projectId,
+    owner_id: "eq." + userId,
     limit: "1",
   });
   return project !== null;
 }
 
-function outputString(output: Record<string, unknown> | undefined, key: string): string | null {
+function outputString(
+  output: Record<string, unknown> | undefined,
+  key: string,
+): string | null {
   const value = output?.[key];
-  return typeof value === "string" && value.trim().length > 0 ? value : null;
+  return typeof value === "string" && value.trim().length > 0
+    ? value
+    : null;
 }
 
 function firstStringFromArray(
@@ -200,22 +219,55 @@ function firstStringFromArray(
   return null;
 }
 
-function providerOutputUrl(job: OwnedJob, task: TripoTask): string {
-  if (job.operation === "image_to_model") {
-    const modelUrl = outputString(task.output, "model_url");
-    if (modelUrl) return modelUrl;
-    throw new Error("Tripo model task did not contain model_url.");
+export function providerArtifactUrls(
+  operation: string,
+  output: Record<string, unknown> | undefined,
+): ProviderArtifactUrl[] {
+  if (operation === "image_to_model") {
+    const modelUrl = outputString(output, "model_url");
+    if (!modelUrl) {
+      throw new Error("Tripo model task did not contain model_url.");
+    }
+
+    const artifacts: ProviderArtifactUrl[] = [
+      {
+        role: "primary",
+        bucket: "generated-models",
+        url: modelUrl,
+      },
+    ];
+
+    const previewUrl = outputString(output, "rendered_image_url") ??
+      outputString(output, "preview_image_url") ??
+      firstStringFromArray(output, "rendered_images");
+
+    if (previewUrl) {
+      artifacts.push({
+        role: "preview",
+        bucket: "generated-images",
+        url: previewUrl,
+      });
+    }
+
+    return artifacts;
   }
 
-  const imageUrl = outputString(task.output, "image_url") ??
-    outputString(task.output, "url") ??
-    firstStringFromArray(task.output, "image_urls") ??
-    firstStringFromArray(task.output, "images");
+  const imageUrl = outputString(output, "image_url") ??
+    outputString(output, "url") ??
+    firstStringFromArray(output, "image_urls") ??
+    firstStringFromArray(output, "images");
 
   if (!imageUrl) {
     throw new Error("Tripo image task did not contain an output image URL.");
   }
-  return imageUrl;
+
+  return [
+    {
+      role: "primary",
+      bucket: "generated-images",
+      url: imageUrl,
+    },
+  ];
 }
 
 function normalizedMime(response: Response): string {
@@ -226,16 +278,20 @@ function normalizedMime(response: Response): string {
 }
 
 function outputTarget(
-  operation: string,
+  bucket: "generated-images" | "generated-models",
   mimeType: string,
-): { bucket: string; extension: string } {
-  if (operation === "image_to_model") {
+): { extension: string } {
+  if (bucket === "generated-models") {
     if (
-      !["model/gltf-binary", "application/octet-stream", "application/x-binary"].includes(mimeType)
+      ![
+        "model/gltf-binary",
+        "application/octet-stream",
+        "application/x-binary",
+      ].includes(mimeType)
     ) {
       throw new Error("Provider model output MIME type is not allowed.");
     }
-    return { bucket: "generated-models", extension: "glb" };
+    return { extension: "glb" };
   }
 
   const extensions: Record<string, string> = {
@@ -247,47 +303,79 @@ function outputTarget(
   if (!extension) {
     throw new Error("Provider image output MIME type is not allowed.");
   }
-  return { bucket: "generated-images", extension };
+  return { extension };
 }
 
 async function persistOutput(
   input: PersistSuccessfulOutputInput,
 ): Promise<PersistedOutput> {
-  const url = providerOutputUrl(input.job, input.task);
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Provider output download failed with status ${response.status}.`);
-  }
-
-  const mimeType = normalizedMime(response);
-  const target = outputTarget(input.job.operation, mimeType);
-  const bytes = await response.arrayBuffer();
-  if (bytes.byteLength === 0) {
-    throw new Error("Provider output was empty.");
-  }
-
-  const storagePath = `${input.userId}/${input.job.projectId}/${input.job.id}.${target.extension}`;
-  await uploadObject(target.bucket, storagePath, bytes, mimeType);
-
-  const result = await adminInsertOne<{ id: string }>(
-    "asset_results",
-    {
-      project_id: input.job.projectId,
-      generation_job_id: input.job.id,
-      part_key: input.job.partKey,
-      storage_path: storagePath,
-      mime_type: mimeType,
-      width: null,
-      height: null,
-    },
-    "id",
+  const artifacts = providerArtifactUrls(
+    input.job.operation,
+    input.task.output,
   );
+  let primary: PersistedOutput | null = null;
 
-  return {
-    assetResultId: result.id,
-    storagePath,
-    mimeType,
-  };
+  for (const artifact of artifacts) {
+    const response = await fetch(artifact.url);
+    if (!response.ok) {
+      throw new Error(
+        "Provider output download failed with status " +
+          response.status +
+          ".",
+      );
+    }
+
+    const mimeType = normalizedMime(response);
+    const target = outputTarget(artifact.bucket, mimeType);
+    const bytes = await response.arrayBuffer();
+    if (bytes.byteLength === 0) {
+      throw new Error("Provider output was empty.");
+    }
+
+    const suffix = artifact.role === "preview" ? "-preview" : "";
+    const storagePath = input.userId +
+      "/" +
+      input.job.projectId +
+      "/" +
+      input.job.id +
+      suffix +
+      "." +
+      target.extension;
+
+    await uploadObject(
+      artifact.bucket,
+      storagePath,
+      bytes,
+      mimeType,
+    );
+
+    const result = await adminInsertOne<{ id: string }>(
+      "asset_results",
+      {
+        project_id: input.job.projectId,
+        generation_job_id: input.job.id,
+        part_key: input.job.partKey,
+        storage_path: storagePath,
+        mime_type: mimeType,
+        width: null,
+        height: null,
+      },
+      "id",
+    );
+
+    if (artifact.role === "primary") {
+      primary = {
+        assetResultId: result.id,
+        storagePath,
+        mimeType,
+      };
+    }
+  }
+
+  if (primary === null) {
+    throw new Error("Provider output did not contain a primary artifact.");
+  }
+  return primary;
 }
 
 function createDefaultDeps(): RefreshGenerationJobDeps {
@@ -297,11 +385,17 @@ function createDefaultDeps(): RefreshGenerationJobDeps {
     authenticate: authenticateSupabaseToken,
     findOwnedJob: async (userId, jobId) => {
       const row = await adminSelectOne<JobRow>("generation_jobs", {
-        select: "id,project_id,part_key,provider,provider_task_id,operation,status",
-        id: `eq.${jobId}`,
+        select:
+          "id,project_id,part_key,provider,provider_task_id,operation,status",
+        id: "eq." + jobId,
         limit: "1",
       });
-      if (row === null || !(await ownsProject(userId, row.project_id))) return null;
+      if (
+        row === null ||
+        !(await ownsProject(userId, row.project_id))
+      ) {
+        return null;
+      }
 
       return {
         id: row.id,
@@ -314,7 +408,12 @@ function createDefaultDeps(): RefreshGenerationJobDeps {
       };
     },
     getProviderTask: (taskId) => tripo.getTask(taskId),
-    updateJob: (jobId, patch) => adminUpdate("generation_jobs", { id: `eq.${jobId}` }, patch),
+    updateJob: (jobId, patch) =>
+      adminUpdate(
+        "generation_jobs",
+        { id: "eq." + jobId },
+        patch,
+      ),
     persistSuccessfulOutput: persistOutput,
   };
 }
