@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../../data/supabase/generationgateway.dart';
+import '../../data/supabase/generation_gateway.dart';
 import '../../domain/generation/generation_job.dart';
 import 'generation_state.dart';
 import 'job_polling_service.dart';
