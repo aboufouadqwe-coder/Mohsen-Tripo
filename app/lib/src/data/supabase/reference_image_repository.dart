@@ -11,19 +11,61 @@ abstract interface class ReferenceImageRepository {
   });
 }
 
+abstract interface class GeneratedReferenceCopier {
+  Future<String> copyGeneratedReference({
+    required String userId,
+    required String projectId,
+    required String generatedPath,
+  });
+}
+
 abstract interface class ReferenceStoragePort {
   Future<void> upload({
     required String path,
     required Uint8List bytes,
     required String contentType,
   });
+
+  Future<Uint8List> downloadGenerated(String path);
 }
 
 final class DefaultReferenceImageRepository
-    implements ReferenceImageRepository {
+    implements ReferenceImageRepository, GeneratedReferenceCopier {
   const DefaultReferenceImageRepository(this._storage);
 
   final ReferenceStoragePort _storage;
+
+  @override
+  Future<String> copyGeneratedReference({
+    required String userId,
+    required String projectId,
+    required String generatedPath,
+  }) async {
+    if (userId.trim().isEmpty ||
+        projectId.trim().isEmpty ||
+        generatedPath.trim().isEmpty) {
+      throw AppFailure.validation(
+        'Generated reference information is incomplete.',
+      );
+    }
+
+    try {
+      final bytes = await _storage.downloadGenerated(generatedPath.trim());
+      if (bytes.isEmpty) throw AppFailure.storage();
+
+      final path = '${userId.trim()}/${projectId.trim()}/reference.png';
+      await _storage.upload(
+        path: path,
+        bytes: bytes,
+        contentType: 'image/png',
+      );
+      return path;
+    } on AppFailure {
+      rethrow;
+    } catch (_) {
+      throw AppFailure.storage();
+    }
+  }
 
   @override
   Future<String> uploadReference({

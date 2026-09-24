@@ -111,6 +111,9 @@ final class DefaultGenerationGateway implements GenerationGateway {
     final progress = response['progress'];
     final partKey = response['part_key'];
     final providerTaskId = response['provider_task_id'];
+    final assetResultId = response['asset_result_id'];
+    final storagePath = response['storage_path'];
+    final mimeType = response['mime_type'];
 
     if (id is! String ||
         projectId is! String ||
@@ -119,7 +122,10 @@ final class DefaultGenerationGateway implements GenerationGateway {
         status is! String ||
         progress is! num ||
         (partKey != null && partKey is! String) ||
-        (providerTaskId != null && providerTaskId is! String)) {
+        (providerTaskId != null && providerTaskId is! String) ||
+        (assetResultId != null && assetResultId is! String) ||
+        (storagePath != null && storagePath is! String) ||
+        (mimeType != null && mimeType is! String)) {
       throw AppFailure.function();
     }
 
@@ -146,6 +152,9 @@ final class DefaultGenerationGateway implements GenerationGateway {
       progress: progress.toDouble(),
       errorCode: response['error_code'] as String?,
       errorMessage: response['error_message'] as String?,
+      assetResultId: assetResultId as String?,
+      storagePath: storagePath as String?,
+      mimeType: mimeType as String?,
     );
   }
 }

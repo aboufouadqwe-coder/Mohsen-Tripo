@@ -144,6 +144,11 @@ final class SupabaseReferenceStoragePort implements ReferenceStoragePort {
   final SupabaseClient _client;
 
   @override
+  Future<Uint8List> downloadGenerated(String path) {
+    return _client.storage.from('generated-images').download(path);
+  }
+
+  @override
   Future<void> upload({
     required String path,
     required Uint8List bytes,

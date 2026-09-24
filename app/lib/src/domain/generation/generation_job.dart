@@ -24,6 +24,9 @@ final class GenerationJob {
     this.progress = 0,
     this.errorCode,
     this.errorMessage,
+    this.assetResultId,
+    this.storagePath,
+    this.mimeType,
   });
 
   final String id;
@@ -36,6 +39,9 @@ final class GenerationJob {
   final double progress;
   final String? errorCode;
   final String? errorMessage;
+  final String? assetResultId;
+  final String? storagePath;
+  final String? mimeType;
 
   bool get isTerminal => switch (status) {
         GenerationStatus.success ||
