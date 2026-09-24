@@ -21,3 +21,18 @@ Deno.test("model output exposes persisted GLB and preview artifacts", () => {
     ],
   );
 });
+
+Deno.test("image output accepts Tripo v3 generated_image_url", () => {
+  assertEquals(
+    providerArtifactUrls("text_to_image", {
+      generated_image_url: "https://provider.test/generated.png",
+    }),
+    [
+      {
+        role: "primary",
+        bucket: "generated-images",
+        url: "https://provider.test/generated.png",
+      },
+    ],
+  );
+});
