@@ -100,20 +100,31 @@ export function createRefreshGenerationJobHandler(
       const task = await deps.getProviderTask(job.providerTaskId);
       const progress = normalizedProgress(task.progress);
 
-      if (task.status === "queued" || task.status === "running") {
+      if (
+        task.status === "queued" ||
+        task.status === "running" ||
+        task.status === "unknown"
+      ) {
+        const jobStatus = task.status === "queued" ? "queued" : "running";
         await deps.updateJob(job.id, {
-          status: task.status,
+          status: jobStatus,
           progress,
         });
         return jsonResponse(
-          normalizedJobBody(job, task.status, progress),
+          normalizedJobBody(job, jobStatus, progress),
         );
       }
 
-      if (task.status === "failed" || task.status === "cancelled") {
+      if (
+        task.status === "failed" ||
+        task.status === "cancelled" ||
+        task.status === "banned" ||
+        task.status === "expired"
+      ) {
         const completedAt = new Date().toISOString();
+        const jobStatus = task.status === "cancelled" ? "cancelled" : "failed";
         await deps.updateJob(job.id, {
-          status: task.status,
+          status: jobStatus,
           progress,
           error_code: task.errorCode === undefined
             ? "provider_" + task.status
@@ -122,7 +133,7 @@ export function createRefreshGenerationJobHandler(
           completed_at: completedAt,
         });
         return jsonResponse(
-          normalizedJobBody(job, task.status, progress),
+          normalizedJobBody(job, jobStatus, progress),
         );
       }
 
