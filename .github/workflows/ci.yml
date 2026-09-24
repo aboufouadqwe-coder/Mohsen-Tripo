@@ -23,5 +23,5 @@ jobs:
           cache: true
       - name: Resolve dependencies
         run: flutter pub get
-      - name: AppConfig TDD test
-        run: flutter test test/config/app_config_test.dart
+      - name: Flutter tests
+        run: flutter test
