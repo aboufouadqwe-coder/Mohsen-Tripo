@@ -35,18 +35,15 @@ final class DefaultProjectRepository implements ProjectRepository {
   const DefaultProjectRepository({
     required this.dataSource,
     required this.currentUserId,
-  })  : _dataSource = dataSource,
-        _currentUserId = currentUserId;
+  });
 
   final ProjectDataSource dataSource;
   final String Function() currentUserId;
-  final ProjectDataSource _dataSource;
-  final String Function() _currentUserId;
 
   @override
   Future<List<Project>> listProjects() async {
     try {
-      final rows = await _dataSource.listForOwner(_requiredUserId());
+      final rows = await dataSource.listForOwner(_requiredUserId());
       return rows.map(_projectFromRow).toList(growable: false);
     } on AppFailure {
       rethrow;
@@ -68,7 +65,7 @@ final class DefaultProjectRepository implements ProjectRepository {
     }
 
     try {
-      final row = await _dataSource.createForOwner(
+      final row = await dataSource.createForOwner(
         ownerId: _requiredUserId(),
         name: normalizedName,
         identityPrompt: identityPrompt.trim(),
@@ -93,7 +90,7 @@ final class DefaultProjectRepository implements ProjectRepository {
     }
 
     try {
-      final row = await _dataSource.updateReferenceImage(
+      final row = await dataSource.updateReferenceImage(
         ownerId: _requiredUserId(),
         projectId: projectId.trim(),
         storagePath: storagePath.trim(),
@@ -107,7 +104,7 @@ final class DefaultProjectRepository implements ProjectRepository {
   }
 
   String _requiredUserId() {
-    final value = _currentUserId().trim();
+    final value = currentUserId().trim();
     if (value.isEmpty) throw AppFailure.authentication();
     return value;
   }
