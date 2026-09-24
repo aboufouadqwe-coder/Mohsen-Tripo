@@ -154,3 +154,29 @@ Deno.test("refresh-generation-job marks persistence failure", async () => {
   assertEquals(patch?.status, "failed");
   assertEquals(patch?.error_code, "persistence_failed");
 });
+
+Deno.test("refresh-generation-job maps banned provider status to failed", async () => {
+  let patch: Record<string, unknown> | undefined;
+  const handler = createRefreshGenerationJobHandler({
+    ...baseDeps,
+    getProviderTask: () =>
+      Promise.resolve({
+        taskId: "task-1",
+        type: "image_to_image",
+        status: "banned" as const,
+        progress: 0,
+      }),
+    updateJob: (_jobId: string, value: unknown) => {
+      patch = value as Record<string, unknown>;
+      return Promise.resolve();
+    },
+  });
+
+  const response = await handler(request({ job_id: "job-1" }));
+  const body = await response.json();
+
+  assertEquals(response.status, 200);
+  assertEquals(patch?.status, "failed");
+  assertEquals(patch?.error_code, "provider_banned");
+  assertEquals(body.status, "failed");
+});
