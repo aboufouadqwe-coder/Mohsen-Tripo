@@ -183,7 +183,7 @@ export async function createSignedObjectUrl(
 export async function uploadObject(
   bucket: string,
   path: string,
-  bytes: Uint8Array,
+  bytes: ArrayBuffer,
   mimeType: string,
 ): Promise<void> {
   const response = await fetch(

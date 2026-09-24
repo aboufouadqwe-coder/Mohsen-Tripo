@@ -248,7 +248,7 @@ async function persistOutput(
 
   const mimeType = normalizedMime(response);
   const target = outputTarget(input.job.operation, mimeType);
-  const bytes = new Uint8Array(await response.arrayBuffer());
+  const bytes = await response.arrayBuffer();
   if (bytes.byteLength === 0) {
     throw new Error("Provider output was empty.");
   }
