@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../../core/analytics/analytics.dart';
 import '../../data/supabase/generation_gateway.dart';
 import '../../domain/generation/generation_job.dart';
 
@@ -46,6 +49,12 @@ final class _SourceImageGeneratorState extends State<SourceImageGenerator> {
     return progress;
   }
 
+  void _capture(String event, Map<String, Object?> properties) {
+    final analytics = AnalyticsBinding.maybeCurrent;
+    if (analytics == null) return;
+    unawaited(captureAnalyticsSafely(analytics, event, properties));
+  }
+
   Future<void> _generate() async {
     if (_busy) return;
     final prompt = _promptController.text.trim();
@@ -59,6 +68,11 @@ final class _SourceImageGeneratorState extends State<SourceImageGenerator> {
       _error = null;
       _job = null;
     });
+
+    _capture(
+      AnalyticsEvents.generationStarted,
+      const {'operation': 'text_to_image'},
+    );
 
     try {
       final jobId = await widget.gateway.generateSourceImage(
@@ -77,13 +91,39 @@ final class _SourceImageGeneratorState extends State<SourceImageGenerator> {
 
       final terminal = _job;
       if (terminal?.status == GenerationStatus.success &&
-          !_isPersistedImage(terminal)) {
+          _isPersistedImage(terminal)) {
+        _capture(
+          AnalyticsEvents.generationCompleted,
+          const {'operation': 'text_to_image'},
+        );
+      } else if (terminal?.status == GenerationStatus.success) {
+        _capture(
+          AnalyticsEvents.generationFailed,
+          const {
+            'operation': 'text_to_image',
+            'error_code': 'persistence_missing',
+          },
+        );
         setState(() => _error = 'اكتمل التوليد لكن الصورة لم تُحفظ بعد.');
       } else if (terminal?.status == GenerationStatus.failed ||
           terminal?.status == GenerationStatus.cancelled) {
+        _capture(
+          AnalyticsEvents.generationFailed,
+          {
+            'operation': 'text_to_image',
+            'error_code': terminal?.errorCode ?? 'provider_failed',
+          },
+        );
         setState(() => _error = 'تعذر إنشاء الصورة المرجعية.');
       }
     } catch (_) {
+      _capture(
+        AnalyticsEvents.generationFailed,
+        const {
+          'operation': 'text_to_image',
+          'error_code': 'client_request_failed',
+        },
+      );
       if (mounted) setState(() => _error = 'تعذر إنشاء الصورة المرجعية.');
     } finally {
       if (mounted) setState(() => _busy = false);

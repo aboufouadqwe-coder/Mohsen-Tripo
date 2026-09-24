@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../../core/analytics/analytics.dart';
 import '../../data/supabase/project_repository.dart';
 import '../../domain/projects/project.dart';
 
@@ -49,6 +52,18 @@ final class _CreateProjectPageState extends State<CreateProjectPage> {
         name: name,
         identityPrompt: _identityController.text.trim(),
       );
+      final analytics = AnalyticsBinding.maybeCurrent;
+      if (analytics != null) {
+        unawaited(
+          captureAnalyticsSafely(
+            analytics,
+            AnalyticsEvents.projectCreated,
+            {
+              'has_identity_prompt': project.identityPrompt.trim().isNotEmpty,
+            },
+          ),
+        );
+      }
       if (!mounted) return;
       widget.onCreated(project);
     } catch (_) {

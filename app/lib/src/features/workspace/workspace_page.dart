@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/analytics/analytics.dart';
 import '../../data/supabase/generation_gateway.dart';
 import '../../data/supabase/project_repository.dart';
 import '../../data/supabase/reference_image_repository.dart';
@@ -130,6 +131,20 @@ final class _WorkspacePageState extends State<WorkspacePage> {
         template = templates.first;
       }
 
+      final analytics = AnalyticsBinding.maybeCurrent;
+      if (analytics != null) {
+        unawaited(
+          captureAnalyticsSafely(
+            analytics,
+            AnalyticsEvents.templateSelected,
+            {
+              'template_kind': template.isBuiltin ? 'builtin' : 'custom',
+              'part_count': template.parts.length,
+            },
+          ),
+        );
+      }
+
       final templateController = TemplateEditorController(
         initialParts: template.parts,
       );
@@ -237,6 +252,16 @@ final class _WorkspacePageState extends State<WorkspacePage> {
         generatedPath: generatedPath,
       );
       await _setReferencePath(referencePath);
+      final analytics = AnalyticsBinding.maybeCurrent;
+      if (analytics != null) {
+        unawaited(
+          captureAnalyticsSafely(
+            analytics,
+            AnalyticsEvents.referenceImageAdded,
+            const {'source': 'generated', 'format': 'png'},
+          ),
+        );
+      }
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

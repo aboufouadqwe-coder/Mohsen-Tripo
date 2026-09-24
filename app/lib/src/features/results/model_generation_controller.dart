@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
+import '../../core/analytics/analytics.dart';
 import '../../data/supabase/generation_gateway.dart';
 import '../../domain/assets/asset_result.dart';
 import '../../domain/generation/generation_job.dart';
@@ -23,6 +26,12 @@ final class ModelGenerationController extends ChangeNotifier {
 
   bool canGenerateFrom(AssetResult asset) => asset.isImage && !isBusy;
 
+  void _capture(String event, Map<String, Object?> properties) {
+    final analytics = AnalyticsBinding.maybeCurrent;
+    if (analytics == null) return;
+    unawaited(captureAnalyticsSafely(analytics, event, properties));
+  }
+
   Future<void> generateFromImage(AssetResult asset) async {
     if (_disposed || isBusy) return;
 
@@ -37,6 +46,11 @@ final class ModelGenerationController extends ChangeNotifier {
     errorCode = null;
     job = null;
     _notify();
+
+    _capture(
+      AnalyticsEvents.modelGenerationStarted,
+      {'source_mime_type': asset.mimeType},
+    );
 
     try {
       final jobId = await gateway.generateModel(asset.id);
@@ -57,14 +71,28 @@ final class ModelGenerationController extends ChangeNotifier {
       if (_disposed) return;
 
       job = terminal;
-      if (terminal.status == GenerationStatus.failed ||
-          terminal.status == GenerationStatus.cancelled) {
+      if (terminal.status == GenerationStatus.success) {
+        _capture(
+          AnalyticsEvents.modelGenerationCompleted,
+          {
+            'output_mime_type': terminal.mimeType ?? 'model/gltf-binary',
+          },
+        );
+      } else {
         errorCode = terminal.errorCode ?? 'model_generation_failed';
+        _capture(
+          AnalyticsEvents.modelGenerationFailed,
+          {'error_code': errorCode!},
+        );
       }
       _notify();
     } catch (_) {
       if (_disposed) return;
       errorCode = 'model_generation_failed';
+      _capture(
+        AnalyticsEvents.modelGenerationFailed,
+        const {'error_code': 'client_request_failed'},
+      );
       _notify();
     } finally {
       if (!_disposed) {

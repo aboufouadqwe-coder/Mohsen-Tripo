@@ -90,6 +90,8 @@ final class AnalyticsBinding {
 
   static Analytics? _current;
 
+  static Analytics? get maybeCurrent => _current;
+
   static Analytics get current {
     final analytics = _current;
     if (analytics == null) {
@@ -100,5 +102,17 @@ final class AnalyticsBinding {
 
   static void bind(Analytics analytics) {
     _current = analytics;
+  }
+}
+
+Future<void> captureAnalyticsSafely(
+  Analytics analytics,
+  String event,
+  Map<String, Object?> properties,
+) async {
+  try {
+    await analytics.capture(event, properties);
+  } catch (_) {
+    // Analytics is never allowed to fail the user operation.
   }
 }

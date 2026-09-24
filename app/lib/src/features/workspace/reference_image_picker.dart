@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/analytics/analytics.dart';
 import '../../data/supabase/reference_image_repository.dart';
 
 final class LocalReferenceImage {
@@ -89,6 +91,19 @@ final class _ReferenceImagePickerState extends State<ReferenceImagePicker> {
         bytes: await image.readBytes(),
         extension: extension!,
       );
+      final analytics = AnalyticsBinding.maybeCurrent;
+      if (analytics != null) {
+        unawaited(
+          captureAnalyticsSafely(
+            analytics,
+            AnalyticsEvents.referenceImageAdded,
+            {
+              'source': 'upload',
+              'format': extension == 'jpeg' ? 'jpg' : extension,
+            },
+          ),
+        );
+      }
       if (!mounted) return;
       widget.onUploaded(path);
     } catch (_) {
