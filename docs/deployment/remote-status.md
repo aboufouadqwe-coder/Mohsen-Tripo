@@ -77,33 +77,35 @@ Automated verification completed before remote binding:
 
 CI now builds against the hosted free Supabase project and uploads `app-release.apk` as the `mohsen-tripo-android-release` artifact.
 
-## Remaining external gates
+## Remote runtime configuration
 
-### 1. Anonymous Sign-Ins
+### Anonymous Sign-Ins
 
-The Flutter startup flow uses `signInAnonymously()`.
+Enabled in the hosted Supabase Auth provider settings.
 
-Supabase documentation requires Anonymous Sign-Ins to be enabled in the hosted project's Auth provider settings. The connected Supabase MCP currently exposes no Auth-provider configuration mutation, so this setting cannot be changed from the available toolset.
+The Flutter startup flow uses `signInAnonymously()`, so the app can now establish an authenticated anonymous session and satisfy RLS ownership policies.
 
-Required dashboard path:
+Before public release, review CAPTCHA/Turnstile and rate limits for anonymous-auth abuse protection.
 
-`Supabase Dashboard -> Mohsen-Tripo -> Authentication -> Providers -> Anonymous Sign-Ins -> Enable`
+### Tripo server secret
 
-Before public release, also review CAPTCHA/Turnstile and rate limits for anonymous-auth abuse protection.
+`TRIPO_API_KEY` has been configured as an Edge Function/server secret in Supabase.
 
-### 2. Tripo server secret
+The secret value is intentionally not stored in Flutter, GitHub source, Dart defines, Gradle, or this document.
 
-The Edge Functions intentionally require `TRIPO_API_KEY` from the server environment.
+## Remaining external gate
 
-No connected Supabase tool currently exposes secret-setting. Do not place this value in Flutter, GitHub source, Dart defines, or Gradle.
+### Real-device smoke test
 
-Until this server-side secret is configured, generation calls will fail safely with a provider configuration error.
+The remaining gate is a real Android-device smoke test of the hosted flow:
 
-### 3. Real-device smoke test
+1. launch the release APK,
+2. establish the anonymous Supabase session,
+3. create a project,
+4. add or generate a reference image,
+5. submit one generation request,
+6. poll it to terminal state,
+7. verify the result is persisted and visible,
+8. optionally test image-to-3D only if it can be done without paid usage.
 
-The final paid/provider smoke test remains blocked until:
-
-- Anonymous Sign-Ins is enabled remotely.
-- `TRIPO_API_KEY` is configured as an Edge Function secret.
-
-No paid Tripo call is required by CI.
+No automatic GitHub Action should be started for this test.
