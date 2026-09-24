@@ -38,7 +38,7 @@ GoRouter buildAppRouter(AppRouterDependencies dependencies) {
           projectRepository: dependencies.projectRepository,
           onCreateProject: () => context.go('/projects/new'),
           onOpenProject: (Project project) {
-            context.go('/projects/' + project.id);
+            context.go('/projects/${project.id}');
           },
         ),
       ),
@@ -47,7 +47,7 @@ GoRouter buildAppRouter(AppRouterDependencies dependencies) {
         builder: (context, state) => CreateProjectPage(
           projectRepository: dependencies.projectRepository,
           onCreated: (project) {
-            context.go('/projects/' + project.id);
+            context.go('/projects/${project.id}');
           },
         ),
       ),
