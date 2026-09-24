@@ -118,8 +118,7 @@ export function createRefreshGenerationJobHandler(
           error_code: task.errorCode === undefined
             ? "provider_" + task.status
             : "provider_" + task.errorCode,
-          error_message:
-            "The generation provider reported a terminal failure.",
+          error_message: "The generation provider reported a terminal failure.",
           completed_at: completedAt,
         });
         return jsonResponse(
@@ -194,9 +193,7 @@ function outputString(
   key: string,
 ): string | null {
   const value = output?.[key];
-  return typeof value === "string" && value.trim().length > 0
-    ? value
-    : null;
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
 
 function firstStringFromArray(
@@ -385,8 +382,7 @@ function createDefaultDeps(): RefreshGenerationJobDeps {
     authenticate: authenticateSupabaseToken,
     findOwnedJob: async (userId, jobId) => {
       const row = await adminSelectOne<JobRow>("generation_jobs", {
-        select:
-          "id,project_id,part_key,provider,provider_task_id,operation,status",
+        select: "id,project_id,part_key,provider,provider_task_id,operation,status",
         id: "eq." + jobId,
         limit: "1",
       });
