@@ -86,10 +86,8 @@ final class TemplateEditorController extends ChangeNotifier {
       return;
     }
 
-    var targetIndex = newIndex;
-    if (targetIndex > oldIndex) targetIndex -= 1;
-
     final item = _parts.removeAt(oldIndex);
+    final targetIndex = newIndex > _parts.length ? _parts.length : newIndex;
     _parts.insert(targetIndex, item);
     notifyListeners();
   }
@@ -168,7 +166,7 @@ final class _TemplateEditorState extends State<TemplateEditor> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: widget.controller.parts.length,
-          onReorder: widget.controller.reorder,
+          onReorderItem: widget.controller.reorder,
           itemBuilder: (context, index) {
             final part = widget.controller.parts[index];
             return PartRequestTile(
