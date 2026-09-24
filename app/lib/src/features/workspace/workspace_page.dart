@@ -126,7 +126,8 @@ final class _WorkspacePageState extends State<WorkspacePage> {
     }
 
     try {
-      final referencePath = await repository.copyGeneratedReference(
+      final copier = repository as GeneratedReferenceCopier;
+      final referencePath = await copier.copyGeneratedReference(
         userId: widget.currentUserId(),
         projectId: project.id,
         generatedPath: generatedPath,
