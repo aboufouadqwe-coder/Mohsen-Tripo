@@ -84,8 +84,8 @@ export function createGenerateModelHandler(
         progress: 0,
         request_payload_redacted: {
           source_asset_result_id: asset.id,
-          source_provider_task_reused:
-            sourceJob.provider === "tripo" && Boolean(sourceJob.providerTaskId),
+          source_provider_task_reused: sourceJob.provider === "tripo" &&
+            Boolean(sourceJob.providerTaskId),
         },
       });
 

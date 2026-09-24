@@ -152,7 +152,9 @@ export async function createSignedObjectUrl(
   expiresIn = 120,
 ): Promise<string> {
   const response = await fetch(
-    `${supabaseUrl()}/storage/v1/object/sign/${encodeURIComponent(bucket)}/${encodedObjectPath(path)}`,
+    `${supabaseUrl()}/storage/v1/object/sign/${encodeURIComponent(bucket)}/${
+      encodedObjectPath(path)
+    }`,
     {
       method: "POST",
       headers: adminHeaders({ "content-type": "application/json" }),
@@ -175,9 +177,7 @@ export async function createSignedObjectUrl(
   }
 
   const signedUrl = (decoded as JsonRecord).signedURL as string;
-  return signedUrl.startsWith("http")
-    ? signedUrl
-    : `${supabaseUrl()}/storage/v1${signedUrl}`;
+  return signedUrl.startsWith("http") ? signedUrl : `${supabaseUrl()}/storage/v1${signedUrl}`;
 }
 
 export async function uploadObject(

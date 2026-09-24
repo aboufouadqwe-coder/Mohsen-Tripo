@@ -17,25 +17,29 @@ function request(body: unknown, authenticated = true): Request {
 const baseDeps = {
   authenticate: (_token: string) => Promise.resolve("user-1"),
   findOwnedAssetResult: (_userId: string, assetResultId: string) =>
-    Promise.resolve(assetResultId === "asset-1"
-      ? {
-        id: assetResultId,
-        projectId: "project-1",
-        generationJobId: "image-job-1",
-        partKey: "head",
-        storagePath: "user-1/project-1/head.png",
-        mimeType: "image/png",
-      }
-      : null),
+    Promise.resolve(
+      assetResultId === "asset-1"
+        ? {
+          id: assetResultId,
+          projectId: "project-1",
+          generationJobId: "image-job-1",
+          partKey: "head",
+          storagePath: "user-1/project-1/head.png",
+          mimeType: "image/png",
+        }
+        : null,
+    ),
   findOwnedGenerationJob: (_userId: string, jobId: string) =>
-    Promise.resolve(jobId === "image-job-1"
-      ? {
-        id: jobId,
-        provider: "tripo",
-        providerTaskId: "task-image-1",
-        operation: "image_to_image",
-      }
-      : null),
+    Promise.resolve(
+      jobId === "image-job-1"
+        ? {
+          id: jobId,
+          provider: "tripo",
+          providerTaskId: "task-image-1",
+          operation: "image_to_image",
+        }
+        : null,
+    ),
   signGeneratedImageUrl: (_path: string) => Promise.resolve("https://signed.test/head.png"),
   createImageToModel: (_input: { input: string }) => Promise.resolve("task-model-1"),
   insertJob: (_input: unknown) => Promise.resolve("job-model-1"),

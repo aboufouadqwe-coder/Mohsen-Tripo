@@ -253,8 +253,7 @@ async function persistOutput(
     throw new Error("Provider output was empty.");
   }
 
-  const storagePath =
-    `${input.userId}/${input.job.projectId}/${input.job.id}.${target.extension}`;
+  const storagePath = `${input.userId}/${input.job.projectId}/${input.job.id}.${target.extension}`;
   await uploadObject(target.bucket, storagePath, bytes, mimeType);
 
   const result = await adminInsertOne<{ id: string }>(
@@ -301,8 +300,7 @@ function createDefaultDeps(): RefreshGenerationJobDeps {
       };
     },
     getProviderTask: (taskId) => tripo.getTask(taskId),
-    updateJob: (jobId, patch) =>
-      adminUpdate("generation_jobs", { id: `eq.${jobId}` }, patch),
+    updateJob: (jobId, patch) => adminUpdate("generation_jobs", { id: `eq.${jobId}` }, patch),
     persistSuccessfulOutput: persistOutput,
   };
 }

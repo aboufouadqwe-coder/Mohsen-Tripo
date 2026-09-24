@@ -66,7 +66,9 @@ Deno.test("generate-source-image creates an async job", async () => {
     },
   });
 
-  const response = await handler(request({ project_id: "project-1", prompt: "old hospital patient" }));
+  const response = await handler(
+    request({ project_id: "project-1", prompt: "old hospital patient" }),
+  );
   const body = await response.json();
 
   assertEquals(response.status, 202);

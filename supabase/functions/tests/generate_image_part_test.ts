@@ -17,25 +17,28 @@ function request(body: unknown, authenticated = true): Request {
 const baseDeps = {
   authenticate: (_token: string) => Promise.resolve("user-1"),
   findOwnedProject: (_userId: string, projectId: string) =>
-    Promise.resolve(projectId === "project-1"
-      ? {
-        id: projectId,
-        referenceImagePath: "user-1/project-1/reference.png",
-        templateId: "template-1",
-        identityPrompt: "Bandaged hospital patient",
-      }
-      : null),
+    Promise.resolve(
+      projectId === "project-1"
+        ? {
+          id: projectId,
+          referenceImagePath: "user-1/project-1/reference.png",
+          templateId: "template-1",
+          identityPrompt: "Bandaged hospital patient",
+        }
+        : null,
+    ),
   findTemplatePart: (_templateId: string, partKey: string) =>
-    Promise.resolve(partKey === "head"
-      ? {
-        key: "head",
-        label: "Head",
-        promptFragment: "Generate the complete head.",
-      }
-      : null),
+    Promise.resolve(
+      partKey === "head"
+        ? {
+          key: "head",
+          label: "Head",
+          promptFragment: "Generate the complete head.",
+        }
+        : null,
+    ),
   signReferenceUrl: (_path: string) => Promise.resolve("https://signed.test/reference.png"),
-  createImageToImage: (_input: { input: string; prompt: string }) =>
-    Promise.resolve("task-part-1"),
+  createImageToImage: (_input: { input: string; prompt: string }) => Promise.resolve("task-part-1"),
   insertJob: (_input: unknown) => Promise.resolve("job-part-1"),
 };
 

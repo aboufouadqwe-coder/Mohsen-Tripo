@@ -137,14 +137,12 @@ function createDefaultDeps(): GenerateImagePartDeps {
         owner_id: `eq.${userId}`,
         limit: "1",
       });
-      return row === null
-        ? null
-        : {
-          id: row.id,
-          referenceImagePath: row.reference_image_path,
-          templateId: row.template_id,
-          identityPrompt: row.identity_prompt,
-        };
+      return row === null ? null : {
+        id: row.id,
+        referenceImagePath: row.reference_image_path,
+        templateId: row.template_id,
+        identityPrompt: row.identity_prompt,
+      };
     },
     findTemplatePart: async (templateId, partKey, userId) => {
       const template = await adminSelectOne<TemplateRow>("asset_templates", {
@@ -165,13 +163,11 @@ function createDefaultDeps(): GenerateImagePartDeps {
         key: `eq.${partKey}`,
         limit: "1",
       });
-      return part === null
-        ? null
-        : {
-          key: part.key,
-          label: part.label,
-          promptFragment: part.prompt_fragment,
-        };
+      return part === null ? null : {
+        key: part.key,
+        label: part.label,
+        promptFragment: part.prompt_fragment,
+      };
     },
     signReferenceUrl: (path) => createSignedObjectUrl("reference-images", path),
     createImageToImage: (input) => tripo.createImageToImage(input),
