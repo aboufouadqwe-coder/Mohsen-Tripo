@@ -1,4 +1,4 @@
-import '../../data/supabase/generationgateway.dart';
+import '../../data/supabase/generation_gateway.dart';
 import '../../domain/generation/generation_job.dart';
 
 typedef PollingDelay = Future<void> Function(Duration duration);
