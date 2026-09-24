@@ -1,7 +1,7 @@
 import {
   assertEquals,
-  assertRejects,
   assertStringIncludes,
+  assertThrows,
 } from "@std/assert";
 import { buildAssetPrompt } from "../_shared/prompt_builder.ts";
 
@@ -42,27 +42,27 @@ Deno.test("custom instructions are clamped to 1000 characters", () => {
   assertEquals(prompt.slice(start, end).length, 1000);
 });
 
-Deno.test("blank part label is rejected", async () => {
-  await assertRejects(
+Deno.test("blank part label is rejected", () => {
+  assertThrows(
     () =>
-      Promise.resolve(buildAssetPrompt({
+      buildAssetPrompt({
         projectIdentity: "Patient",
         partLabel: "   ",
         partPrompt: "Generate the head.",
-      })),
+      }),
     Error,
   );
 });
 
-Deno.test("control-only custom instructions are rejected", async () => {
-  await assertRejects(
+Deno.test("control-only custom instructions are rejected", () => {
+  assertThrows(
     () =>
-      Promise.resolve(buildAssetPrompt({
+      buildAssetPrompt({
         projectIdentity: "Patient",
         partLabel: "Head",
         partPrompt: "Generate the head.",
         customInstructions: "\u0000\u0001\u0002",
-      })),
+      }),
     Error,
   );
 });
