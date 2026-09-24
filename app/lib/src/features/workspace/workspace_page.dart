@@ -328,7 +328,7 @@ final class _WorkspacePageState extends State<WorkspacePage> {
             ),
             if (project.referenceImagePath != null) ...[
               const SizedBox(height: 8),
-              Text('المسار: ' + project.referenceImagePath!),
+              Text('المسار: ${project.referenceImagePath}'),
             ],
             const SizedBox(height: 24),
             Text(
