@@ -1,4 +1,4 @@
-import '../../data/supabase/generation_gateway.dart';
+import '../../data/supabase/generationgateway.dart';
 import '../../domain/generation/generation_job.dart';
 
 typedef PollingDelay = Future<void> Function(Duration duration);
@@ -12,10 +12,9 @@ final class JobPollingCancelled implements Exception {
 
 final class JobPollingService {
   JobPollingService({
-    required GenerationGateway gateway,
+    required this.gateway,
     PollingDelay? delay,
-  })  : _gateway = gateway,
-        _delay = delay ?? ((duration) => Future<void>.delayed(duration));
+  }) : _delay = delay ?? ((duration) => Future<void>.delayed(duration));
 
   static const _intervals = <Duration>[
     Duration(seconds: 1),
@@ -25,7 +24,7 @@ final class JobPollingService {
     Duration(seconds: 10),
   ];
 
-  final GenerationGateway _gateway;
+  final GenerationGateway gateway;
   final PollingDelay _delay;
   bool _disposed = false;
 
@@ -35,7 +34,7 @@ final class JobPollingService {
     while (true) {
       _throwIfDisposed();
 
-      final job = await _gateway.refreshJob(jobId);
+      final job = await gateway.refreshJob(jobId);
       if (job.isTerminal) return job;
 
       final interval = _intervals[
