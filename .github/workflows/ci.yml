@@ -17,6 +17,9 @@ on:
 jobs:
   flutter:
     runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: https://zzsjejluvufjtaxsqjme.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_nL_A-yNI-RIJMEHkna3cdg_DZ6pBAUq
     defaults:
       run:
         working-directory: app
@@ -41,13 +44,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -R -n --binary-files=without-match -F 'TRIPO_API_KEY'             lib android pubspec.yaml; then
+          if grep -R -n --binary-files=without-match -F 'TRIPO_API_KEY' \
+            lib android pubspec.yaml; then
             echo 'TRIPO_API_KEY must never be referenced by the Android client.'
             exit 1
           fi
-      - name: Build release APK with public config only
+      - name: Build release APK against hosted free Supabase
         run: |
-          flutter build apk --release             --dart-define=SUPABASE_URL=https://example.supabase.co             --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_test
+          flutter build apk --release \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
       - name: Verify release APK excludes backend secret marker
         shell: bash
         run: |
@@ -58,3 +64,10 @@ jobs:
             echo 'Backend secret marker found in release APK.'
             exit 1
           fi
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mohsen-tripo-android-release
+          path: app/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
