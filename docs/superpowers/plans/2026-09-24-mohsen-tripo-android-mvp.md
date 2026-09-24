@@ -72,6 +72,7 @@
 │   ├── config.toml
 │   ├── functions/
 │   │   ├── _shared/
+│   │   ├── generate-source-image/
 │   │   ├── generate-image-part/
 │   │   ├── refresh-generation-job/
 │   │   ├── generate-model/
@@ -458,7 +459,7 @@ create table public.asset_templates (
 );
 ```
 
-Add `template_parts`, `generation_jobs`, and `asset_results` matching the design spec. Add the deferred `projects.template_id` foreign key after `asset_templates` exists.
+Add `template_parts`, `generation_jobs`, and `asset_results` matching the design spec. `generation_jobs.part_key` must be nullable so project-level `text_to_image` jobs do not invent a fake part. Add the deferred `projects.template_id` foreign key after `asset_templates` exists.
 
 Enable RLS on all five tables.
 
@@ -797,7 +798,7 @@ Load the owned image result and its source `generation_job`. For Tripo-generated
 
 - [ ] **Step 6: Configure JWT verification**
 
-Keep JWT verification enabled for all three user-facing functions.
+Keep JWT verification enabled for all four user-facing functions.
 
 - [ ] **Step 7: Verify Edge Functions**
 
@@ -998,7 +999,7 @@ Then persist the object path on the project row.
 
 - [ ] **Step 7: Add Text-to-Image source generation**
 
-Add a "Generate reference image" action beside image import. It sends the project id and user prompt to `generate-source-image`, shows task progress, persists the completed image, and lets the user set that result as the project's canonical reference image.
+Add a "Generate reference image" action beside image import. It sends the project id and user prompt to `generate-source-image`, shows task progress, persists the completed image in `generated-images`, and when the user selects it as the canonical reference, copies it into `reference-images/{user_id}/{project_id}/reference.png` before updating `projects.reference_image_path`.
 
 Widget tests must verify:
 - blank prompts are rejected locally,
@@ -1237,7 +1238,7 @@ After project creation:
 - enable Anonymous Sign-Ins,
 - apply migration,
 - set only server-side `TRIPO_API_KEY` as an Edge Function secret,
-- deploy all three Edge Functions,
+- deploy all four Edge Functions,
 - run Supabase security and performance advisors,
 - fix every relevant RLS/security finding before proceeding.
 
@@ -1246,7 +1247,7 @@ After project creation:
 Use:
 
 ```bash
-flutter build apk --release   --dart-define=SUPABASE_URL=<project-url>   --dart-define=SUPABASE_PUBLISHABLE_KEY=<publishable-key>
+flutter build apk --release   --dart-define=SUPABASE_URL=$SUPABASE_URL   --dart-define=SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY
 ```
 
 The Tripo key must not appear in the command, Dart defines, Gradle files, repository, or APK strings.
