@@ -1,0 +1,32 @@
+name: Supabase Database
+
+on:
+  push:
+    branches:
+      - feature/android-mvp
+    paths:
+      - "supabase/**"
+      - ".github/workflows/supabase.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "supabase/**"
+      - ".github/workflows/supabase.yml"
+
+jobs:
+  database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start local Supabase
+        run: supabase start
+      - name: Reset database from migrations
+        run: supabase db reset
+      - name: Run pgTAP tests
+        run: supabase test db
+      - name: Lint database
+        run: supabase db lint --level error
