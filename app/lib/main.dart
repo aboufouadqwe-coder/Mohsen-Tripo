@@ -13,7 +13,7 @@ Future<void> main() async {
 
   await Supabase.initialize(
     url: config.supabaseUrl,
-    anonKey: config.supabasePublishableKey,
+    publishableKey: config.supabasePublishableKey,
   );
 
   await SessionBootstrapper(
