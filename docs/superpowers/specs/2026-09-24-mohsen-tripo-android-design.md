@@ -275,7 +275,7 @@ All user-owned rows must be protected with RLS.
 
 ## 8. Storage Model
 
-Suggested buckets:
+MVP buckets:
 
 ```text
 reference-images/
@@ -350,11 +350,15 @@ Non-negotiable:
 
 ## 11. Authentication
 
-MVP will use a device-friendly Supabase Auth flow with no custom account system.
+MVP will use Supabase Anonymous Sign-Ins through `signInAnonymously()`.
 
-The implementation plan must select the simplest supported authenticated-user flow for Android while preserving per-user RLS.
+On first launch, the Android client creates an anonymous authenticated user and persists the Supabase session locally. This gives each installation a stable `auth.uid()` for RLS without requiring a visible login screen.
 
-A visible login screen is not required for the first internal build unless the chosen Supabase Auth mode requires one.
+Anonymous users use the `authenticated` Postgres role, so RLS policies must restrict ownership with `auth.uid()` rather than treating the role itself as authorization.
+
+For the internal MVP, clearing app data, signing out, or moving to another device may orphan access to that anonymous account. Account linking and recovery are explicitly deferred beyond MVP.
+
+Before a public release, abuse protection for anonymous sign-ins must be reviewed, including Supabase's recommended CAPTCHA/rate-limit protections.
 
 ## 12. Observability
 
