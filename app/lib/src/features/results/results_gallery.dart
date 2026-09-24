@@ -110,9 +110,7 @@ final class _ResultsGalleryState extends State<ResultsGallery> {
           ),
           const SizedBox(height: 4),
           Text(
-            'تقدم 3D: ' +
-                (modelJob.progress * 100).round().toString() +
-                '%',
+            'تقدم 3D: ${(modelJob.progress * 100).round()}%',
           ),
         ],
         if (_loading)
@@ -135,7 +133,7 @@ final class _ResultsGalleryState extends State<ResultsGallery> {
             (entry) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: AssetResultCard(
-                key: ValueKey('result-' + entry.job.id),
+                key: ValueKey('result-${entry.job.id}'),
                 entry: entry,
                 onGenerateModel: widget.onGenerateModel,
                 imagePreviewBuilder: widget.imagePreviewBuilder,
