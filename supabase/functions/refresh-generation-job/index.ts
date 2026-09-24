@@ -20,6 +20,7 @@ type OwnedJob = {
   id: string;
   projectId: string;
   partKey: string | null;
+  provider: string;
   providerTaskId: string | null;
   operation: string;
   status: string;
@@ -51,6 +52,23 @@ function normalizedProgress(progress: number): number {
   return Math.max(0, Math.min(1, progress / 100));
 }
 
+function normalizedJobBody(
+  job: OwnedJob,
+  status: string,
+  progress: number,
+): Record<string, unknown> {
+  return {
+    job_id: job.id,
+    project_id: job.projectId,
+    part_key: job.partKey,
+    provider: job.provider,
+    operation: job.operation,
+    provider_task_id: job.providerTaskId,
+    status,
+    progress,
+  };
+}
+
 export function createRefreshGenerationJobHandler(
   deps: RefreshGenerationJobDeps,
 ): (request: Request) => Promise<Response> {
@@ -77,11 +95,9 @@ export function createRefreshGenerationJobHandler(
           status: task.status,
           progress,
         });
-        return jsonResponse({
-          job_id: job.id,
-          status: task.status,
-          progress,
-        });
+        return jsonResponse(
+          normalizedJobBody(job, task.status, progress),
+        );
       }
 
       if (task.status === "failed" || task.status === "cancelled") {
@@ -95,11 +111,9 @@ export function createRefreshGenerationJobHandler(
           error_message: "The generation provider reported a terminal failure.",
           completed_at: completedAt,
         });
-        return jsonResponse({
-          job_id: job.id,
-          status: task.status,
-          progress,
-        });
+        return jsonResponse(
+          normalizedJobBody(job, task.status, progress),
+        );
       }
 
       let persisted: PersistedOutput;
@@ -133,9 +147,7 @@ export function createRefreshGenerationJobHandler(
       });
 
       return jsonResponse({
-        job_id: job.id,
-        status: "success",
-        progress: 1,
+        ...normalizedJobBody(job, "success", 1),
         asset_result_id: persisted.assetResultId,
         storage_path: persisted.storagePath,
         mime_type: persisted.mimeType,
@@ -147,6 +159,7 @@ type JobRow = {
   id: string;
   project_id: string;
   part_key: string | null;
+  provider: string;
   provider_task_id: string | null;
   operation: string;
   status: string;
@@ -284,7 +297,7 @@ function createDefaultDeps(): RefreshGenerationJobDeps {
     authenticate: authenticateSupabaseToken,
     findOwnedJob: async (userId, jobId) => {
       const row = await adminSelectOne<JobRow>("generation_jobs", {
-        select: "id,project_id,part_key,provider_task_id,operation,status",
+        select: "id,project_id,part_key,provider,provider_task_id,operation,status",
         id: `eq.${jobId}`,
         limit: "1",
       });
@@ -294,6 +307,7 @@ function createDefaultDeps(): RefreshGenerationJobDeps {
         id: row.id,
         projectId: row.project_id,
         partKey: row.part_key,
+        provider: row.provider,
         providerTaskId: row.provider_task_id,
         operation: row.operation,
         status: row.status,
