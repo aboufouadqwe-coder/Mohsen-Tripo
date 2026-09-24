@@ -33,11 +33,13 @@ abstract interface class ProjectDataSource {
 
 final class DefaultProjectRepository implements ProjectRepository {
   const DefaultProjectRepository({
-    required ProjectDataSource dataSource,
-    required String Function() currentUserId,
+    required this.dataSource,
+    required this.currentUserId,
   })  : _dataSource = dataSource,
         _currentUserId = currentUserId;
 
+  final ProjectDataSource dataSource;
+  final String Function() currentUserId;
   final ProjectDataSource _dataSource;
   final String Function() _currentUserId;
 
