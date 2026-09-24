@@ -19,7 +19,7 @@
 - Image-to-3D operation: `POST /v3/generation/image-to-model`.
 - Task polling operation: `GET /v3/tasks/{task_id}`.
 - Pin image generation to `seedream_v5` for the MVP; do not rely on a mutable provider default.
-- Pin 3D generation to `tripo-v3.1` for the MVP.
+- Pin 3D generation to exact model version `v3.1-20260211` for the MVP.
 - Never commit or bundle the Tripo API key.
 - Never expose a Supabase secret/service-role key to Flutter.
 - The Android client may contain only a Supabase publishable key.
@@ -87,8 +87,7 @@
 │       ├── specs/
 │       └── plans/
 ├── .gitignore
-├── README.md
-└── LICENSE
+└── README.md
 ```
 
 ---
@@ -116,7 +115,7 @@
 Run:
 
 ```bash
-flutter create --platforms=android --org com.mohsentripo app
+flutter create --platforms=android --org com.mohsentripo --project-name mohsen_tripo app
 cd app
 flutter pub add supabase_flutter:2.17.2 flutter_riverpod:3.4.3 go_router:18.0.1 image_picker:1.2.3 path_provider:2.1.6 uuid:4.6.0
 flutter pub add --dev mocktail:1.0.5
@@ -130,7 +129,7 @@ Create `app/test/config/app_config_test.dart`:
 
 ```dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:app/src/config/app_config.dart';
+import 'package:mohsen_tripo/src/config/app_config.dart';
 
 void main() {
   test('requires supabase url and publishable key', () {
@@ -576,6 +575,7 @@ git commit -m "feat: add Supabase schema and RLS"
 - Create: `supabase/deno.json`
 
 **Interfaces:**
+- Produces: `TripoClient.createTextToImage(request)`.
 - Produces: `TripoClient.createImageToImage(request)`.
 - Produces: `TripoClient.createImageToModel(request)`.
 - Produces: `TripoClient.getTask(taskId)`.
@@ -610,10 +610,29 @@ Use:
 ```ts
 const TRIPO_BASE_URL = "https://openapi.tripo3d.ai/v3";
 const IMAGE_MODEL = "seedream_v5";
-const MODEL_3D = "tripo-v3.1";
+const MODEL_3D = "v3.1-20260211";
 ```
 
-Image request:
+Text-to-image request:
+
+```ts
+await fetch(`${TRIPO_BASE_URL}/generation/text-to-image`, {
+  method: "POST",
+  headers: {
+    "Authorization": `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    prompt,
+    model: IMAGE_MODEL,
+    size: "2K",
+    output_format: "png",
+    watermark: false,
+  }),
+});
+```
+
+Image-to-image request:
 
 ```ts
 await fetch(`${TRIPO_BASE_URL}/generation/image-to-image`, {
@@ -680,17 +699,20 @@ git commit -m "feat: add Tripo provider contract"
 ### Task 5: Authenticated Edge Functions for Image Generation, Polling, and 3D
 
 **Files:**
+- Create: `supabase/functions/generate-source-image/index.ts`
 - Create: `supabase/functions/generate-image-part/index.ts`
 - Create: `supabase/functions/refresh-generation-job/index.ts`
 - Create: `supabase/functions/generate-model/index.ts`
 - Create: `supabase/functions/_shared/supabase_user.ts`
 - Create: `supabase/functions/_shared/http.ts`
+- Create: `supabase/functions/tests/generate_source_image_test.ts`
 - Create: `supabase/functions/tests/generate_image_part_test.ts`
 - Create: `supabase/functions/tests/refresh_generation_job_test.ts`
 - Create: `supabase/functions/tests/generate_model_test.ts`
 - Modify: `supabase/config.toml`
 
 **Interfaces:**
+- Produces HTTP function `generate-source-image` -> `{ job_id: string }`.
 - Produces HTTP function `generate-image-part` -> `{ job_id: string }`.
 - Produces HTTP function `refresh-generation-job` -> normalized job JSON.
 - Produces HTTP function `generate-model` -> `{ job_id: string }`.
@@ -706,7 +728,27 @@ For each function test:
 - provider nonzero response -> 502 with redacted provider error,
 - no response may include the Tripo API key.
 
-- [ ] **Step 2: Implement `generate-image-part`**
+- [ ] **Step 2: Implement `generate-source-image`**
+
+Request body:
+
+```ts
+type GenerateSourceImageBody = {
+  project_id: string;
+  prompt: string;
+};
+```
+
+Flow:
+
+1. authenticate caller,
+2. load owned project,
+3. validate prompt is non-blank and no longer than 600 English words,
+4. call Tripo text-to-image with `seedream_v5`, `size: "2K"`, `output_format: "png"`, and `watermark: false`,
+5. insert `generation_jobs` with `operation = 'text_to_image'` and nullable `part_key`,
+6. return the internal job id.
+
+- [ ] **Step 3: Implement `generate-image-part`**
 
 Request body:
 
@@ -731,7 +773,7 @@ Flow:
 
 Never store the Authorization header, API key, or unredacted secret material in `request_payload_redacted`.
 
-- [ ] **Step 3: Implement `refresh-generation-job`**
+- [ ] **Step 4: Implement `refresh-generation-job`**
 
 When Tripo status is:
 
@@ -741,7 +783,7 @@ When Tripo status is:
 
 If provider output download/storage upload fails, persist `status = 'failed'` and `error_code = 'persistence_failed'`.
 
-- [ ] **Step 4: Implement `generate-model`**
+- [ ] **Step 5: Implement `generate-model`**
 
 Input:
 
@@ -753,11 +795,11 @@ type GenerateModelBody = {
 
 Load the owned image result and its source `generation_job`. For Tripo-generated images, submit the original provider image task id as the `input` to `/generation/image-to-model`. Insert a model-generation job with `operation = 'image_to_model'`.
 
-- [ ] **Step 5: Configure JWT verification**
+- [ ] **Step 6: Configure JWT verification**
 
 Keep JWT verification enabled for all three user-facing functions.
 
-- [ ] **Step 6: Verify Edge Functions**
+- [ ] **Step 7: Verify Edge Functions**
 
 Run:
 
@@ -769,7 +811,7 @@ deno lint supabase/functions
 
 Expected: PASS.
 
-- [ ] **Step 7: Extend CI and commit**
+- [ ] **Step 8: Extend CI and commit**
 
 CI must run Deno tests without `TRIPO_API_KEY`; tests inject a fake provider transport.
 
@@ -857,6 +899,10 @@ abstract interface class ProjectRepository {
 }
 
 abstract interface class GenerationGateway {
+  Future<String> generateSourceImage({
+    required String projectId,
+    required String prompt,
+  });
   Future<String> generateImagePart({
     required String projectId,
     required String partKey,
@@ -900,6 +946,7 @@ git commit -m "feat: add Supabase auth and repositories"
 - Create: `app/lib/src/features/workspace/template_editor.dart`
 - Create: `app/lib/src/features/workspace/part_request_tile.dart`
 - Create: `app/lib/src/features/workspace/reference_image_picker.dart`
+- Create: `app/lib/src/features/workspace/source_image_generator.dart`
 - Create: `app/test/features/projects/project_list_page_test.dart`
 - Create: `app/test/features/workspace/template_editor_test.dart`
 - Create: `app/test/features/workspace/workspace_page_test.dart`
@@ -944,12 +991,21 @@ Reject unsupported or oversized input before upload. For MVP:
 Use `image_picker`; upload to:
 
 ```text
-<user_id>/<project_id>/reference.<ext>
+{user_id}/{project_id}/reference.{ext}
 ```
 
 Then persist the object path on the project row.
 
-- [ ] **Step 7: Verify widgets**
+- [ ] **Step 7: Add Text-to-Image source generation**
+
+Add a "Generate reference image" action beside image import. It sends the project id and user prompt to `generate-source-image`, shows task progress, persists the completed image, and lets the user set that result as the project's canonical reference image.
+
+Widget tests must verify:
+- blank prompts are rejected locally,
+- a submitted prompt creates exactly one generation job,
+- only a successful persisted image can be selected as the canonical reference.
+
+- [ ] **Step 8: Verify widgets**
 
 ```bash
 cd app
@@ -959,7 +1015,7 @@ flutter analyze
 
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add app/lib/src/features app/lib/src/core/routing app/test/features
@@ -1275,7 +1331,7 @@ Do not merge with unresolved actionable high-confidence defects.
 
 ## Self-Review Checklist
 
-- Spec scope covered: project creation, reference image, templates, custom parts, image-to-image, independent jobs, retries, persistence, history, and image-to-3D are all mapped to Tasks 2–9.
+- Spec scope covered: project creation, imported or text-generated reference image, templates, custom parts, text-to-image, image-to-image, independent jobs, retries, persistence, history, and image-to-3D are all mapped to Tasks 2–9.
 - Security covered: anonymous auth, RLS, private buckets, backend-only Tripo key, redacted logs, and analytics privacy are mapped to Tasks 3–6 and 10.
 - Testing covered: Dart unit tests, widget tests, Deno Edge tests, provider-contract tests, pgTAP RLS tests, CI, and real-device smoke testing are explicitly assigned.
 - Provider drift covered: normalized Tripo client rejects malformed/unknown responses.
