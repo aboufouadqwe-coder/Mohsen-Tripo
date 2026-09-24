@@ -17,6 +17,9 @@ const TASK_STATUSES = new Set<TripoTaskStatus>([
   "success",
   "failed",
   "cancelled",
+  "unknown",
+  "banned",
+  "expired",
 ]);
 
 type Fetcher = typeof fetch;
@@ -115,16 +118,28 @@ export class TripoClient {
       typeof data.task_id !== "string" ||
       data.task_id.trim().length === 0 ||
       typeof data.type !== "string" ||
-      data.type.trim().length === 0 ||
-      typeof data.progress !== "number" ||
-      !Number.isFinite(data.progress) ||
-      data.progress < 0 ||
-      data.progress > 100
+      data.type.trim().length === 0
     ) {
       throw new ProviderError(
         "malformed_response",
         "Tripo task response has invalid required fields.",
       );
+    }
+
+    let progress = status === "success" ? 100 : 0;
+    if (data.progress !== undefined && data.progress !== null) {
+      if (
+        typeof data.progress !== "number" ||
+        !Number.isFinite(data.progress) ||
+        data.progress < 0 ||
+        data.progress > 100
+      ) {
+        throw new ProviderError(
+          "malformed_response",
+          "Tripo task response has invalid progress.",
+        );
+      }
+      progress = data.progress;
     }
 
     const output = isRecord(data.output) ? data.output : undefined;
@@ -133,7 +148,7 @@ export class TripoClient {
       taskId: data.task_id,
       type: data.type,
       status: status as TripoTaskStatus,
-      progress: data.progress,
+      progress,
       output,
       errorCode: typeof data.error_code === "number" ? data.error_code : undefined,
       errorMessage: typeof data.error_message === "string" ? data.error_message : undefined,
