@@ -1,18 +1,7 @@
 name: Supabase Database
 
 on:
-  push:
-    branches:
-      - feature/android-mvp
-    paths:
-      - "supabase/**"
-      - ".github/workflows/supabase.yml"
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "supabase/**"
-      - ".github/workflows/supabase.yml"
+  workflow_dispatch:
 
 jobs:
   database:
