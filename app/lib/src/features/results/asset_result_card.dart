@@ -111,7 +111,7 @@ final class AssetResultCard extends StatelessWidget {
             if (entry.job.errorCode != null) ...[
               const SizedBox(height: 8),
               Text(
-                'الخطأ: ' + entry.job.errorCode!,
+                'الخطأ: ${entry.job.errorCode}',
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.error,
                 ),
