@@ -1,22 +1,20 @@
 import 'package:flutter/foundation.dart';
 
-import '../../data/supabase/generation_gateway.dart';
+import '../../data/supabase/generationgateway.dart';
 import '../../domain/generation/generation_job.dart';
 import 'generation_state.dart';
 import 'job_polling_service.dart';
 
 final class GenerationBatchController extends ChangeNotifier {
   GenerationBatchController({
-    required GenerationGateway gateway,
-    required JobPollingService pollingService,
-    required String projectId,
-  })  : _gateway = gateway,
-        _pollingService = pollingService,
-        _projectId = projectId;
+    required this.gateway,
+    required this.pollingService,
+    required this.projectId,
+  });
 
-  final GenerationGateway _gateway;
-  final JobPollingService _pollingService;
-  final String _projectId;
+  final GenerationGateway gateway;
+  final JobPollingService pollingService;
+  final String projectId;
   final Map<String, GenerationPartState> _state = {};
   bool _disposed = false;
 
@@ -90,8 +88,8 @@ final class GenerationBatchController extends ChangeNotifier {
     _notify();
 
     try {
-      final jobId = await _gateway.generateImagePart(
-        projectId: _projectId,
+      final jobId = await gateway.generateImagePart(
+        projectId: projectId,
         partKey: partKey,
       );
       if (_disposed) return null;
@@ -109,7 +107,7 @@ final class GenerationBatchController extends ChangeNotifier {
 
   Future<void> _pollPart(String partKey, String jobId) async {
     try {
-      final job = await _pollingService.pollUntilTerminal(jobId);
+      final job = await pollingService.pollUntilTerminal(jobId);
       if (_disposed) return;
 
       _state[partKey] = GenerationPartState.fromJob(
@@ -142,7 +140,7 @@ final class GenerationBatchController extends ChangeNotifier {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
-    _pollingService.dispose();
+    pollingService.dispose();
     super.dispose();
   }
 }
