@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'generation_state.dart';
@@ -96,11 +98,14 @@ final class PartRequestTile extends StatelessWidget {
                         ),
                     ],
                   ),
+                  _GenerationElapsedTime(state: state),
                   if (state.isActive &&
-                      state.phase != GenerationPartPhase.submitting)
+                      state.phase != GenerationPartPhase.submitting) ...[
+                    const SizedBox(height: 6),
                     LinearProgressIndicator(
                       value: _progress(state.progress),
                     ),
+                  ],
                   if (state.errorCode != null && state.isFailure)
                     Text(
                       'الخطأ: ${state.errorCode}',
@@ -112,6 +117,79 @@ final class PartRequestTile extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+
+final class _GenerationElapsedTime extends StatefulWidget {
+  const _GenerationElapsedTime({
+    required this.state,
+  });
+
+  final GenerationPartState state;
+
+  @override
+  State<_GenerationElapsedTime> createState() =>
+      _GenerationElapsedTimeState();
+}
+
+final class _GenerationElapsedTimeState
+    extends State<_GenerationElapsedTime> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncTimer();
+  }
+
+  @override
+  void didUpdateWidget(covariant _GenerationElapsedTime oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncTimer();
+  }
+
+  void _syncTimer() {
+    _timer?.cancel();
+    _timer = null;
+    if (!widget.state.isActive || widget.state.startedAt == null) return;
+
+    _timer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) {
+        if (mounted) setState(() {});
+      },
+    );
+  }
+
+  String _format(Duration duration) {
+    final totalSeconds = duration.inSeconds;
+    final minutes = totalSeconds ~/ 60;
+    final seconds = totalSeconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:'
+        '${seconds.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final elapsed = widget.state.elapsed;
+    if (elapsed == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text(
+        widget.state.isActive
+            ? 'الوقت المنقضي: ${_format(elapsed)}'
+            : 'مدة التوليد: ${_format(elapsed)}',
+        style: Theme.of(context).textTheme.bodySmall,
       ),
     );
   }
