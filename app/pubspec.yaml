@@ -16,6 +16,9 @@ dependencies:
   google_mlkit_pose_detection: 0.14.1
   google_mlkit_face_detection: 0.13.2
   image: 4.10.1
+  flutter_secure_storage: 11.2.0
+  crypto: 3.0.7
+  url_launcher: 6.3.2
   model_viewer_plus: 1.10.0
   path_provider: 2.1.6
   posthog_flutter: 5.43.1
