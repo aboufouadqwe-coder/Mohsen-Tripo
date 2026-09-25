@@ -14,6 +14,7 @@ import {
   uploadObject,
 } from "../_shared/supabase_user.ts";
 import { TripoClient } from "../_shared/tripo_client.ts";
+import { resolveTripoCredential } from "../_shared/tripo_credential.ts";
 import type { TripoTask } from "../_shared/tripo_types.ts";
 
 type OwnedJob = {
@@ -24,6 +25,7 @@ type OwnedJob = {
   providerTaskId: string | null;
   operation: string;
   status: string;
+  providerCredentialFingerprint: string | null;
 };
 
 type PersistedOutput = {
@@ -41,7 +43,7 @@ type PersistSuccessfulOutputInput = {
 type RefreshGenerationJobDeps = {
   authenticate: (token: string) => Promise<string>;
   findOwnedJob: (userId: string, jobId: string) => Promise<OwnedJob | null>;
-  getProviderTask: (taskId: string) => Promise<TripoTask>;
+  getProviderTask: (apiKey: string, taskId: string) => Promise<TripoTask>;
   updateJob: (jobId: string, patch: Record<string, unknown>) => Promise<void>;
   persistSuccessfulOutput: (
     input: PersistSuccessfulOutputInput,
@@ -72,6 +74,7 @@ function normalizedJobBody(
     provider_task_id: job.providerTaskId,
     status,
     progress,
+    provider_credential_fingerprint: job.providerCredentialFingerprint,
   };
 }
 
@@ -82,6 +85,7 @@ export function createRefreshGenerationJobHandler(
     executeHttp(async () => {
       const token = requireBearerToken(request);
       const userId = await deps.authenticate(token);
+      const credential = await resolveTripoCredential(request);
       const body = await readJsonObject(request);
       const jobId = requiredString(body, "job_id");
 
@@ -96,8 +100,21 @@ export function createRefreshGenerationJobHandler(
           "Generation job is missing its provider task.",
         );
       }
+      if (
+        job.providerCredentialFingerprint !== null &&
+        job.providerCredentialFingerprint !== credential.fingerprint
+      ) {
+        throw new HttpError(
+          409,
+          "credential_mismatch",
+          "This job must be refreshed with the Tripo key that created it.",
+        );
+      }
 
-      const task = await deps.getProviderTask(job.providerTaskId);
+      const task = await deps.getProviderTask(
+        credential.apiKey,
+        job.providerTaskId,
+      );
       const progress = normalizedProgress(task.progress);
 
       if (
@@ -184,6 +201,7 @@ type JobRow = {
   provider_task_id: string | null;
   operation: string;
   status: string;
+  provider_credential_fingerprint: string | null;
 };
 
 async function ownsProject(
@@ -446,13 +464,12 @@ async function persistOutput(
 }
 
 function createDefaultDeps(): RefreshGenerationJobDeps {
-  const tripo = new TripoClient();
-
   return {
     authenticate: authenticateSupabaseToken,
     findOwnedJob: async (userId, jobId) => {
       const row = await adminSelectOne<JobRow>("generation_jobs", {
-        select: "id,project_id,part_key,provider,provider_task_id,operation,status",
+        select:
+          "id,project_id,part_key,provider,provider_task_id,operation,status,provider_credential_fingerprint",
         id: "eq." + jobId,
         limit: "1",
       });
@@ -471,9 +488,11 @@ function createDefaultDeps(): RefreshGenerationJobDeps {
         providerTaskId: row.provider_task_id,
         operation: row.operation,
         status: row.status,
+        providerCredentialFingerprint: row.provider_credential_fingerprint,
       };
     },
-    getProviderTask: (taskId) => tripo.getTask(taskId),
+    getProviderTask: (apiKey, taskId) =>
+      new TripoClient({ apiKey }).getTask(taskId),
     updateJob: (jobId, patch) =>
       adminUpdate(
         "generation_jobs",
