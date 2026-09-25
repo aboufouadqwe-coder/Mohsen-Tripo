@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mohsen_tripo/src/data/supabase/generation_gateway.dart';
 import 'package:mohsen_tripo/src/domain/generation/generation_job.dart';
+import 'package:mohsen_tripo/src/domain/generation/model_generation_settings.dart';
 
 final class FakeFunctionInvoker implements FunctionInvoker {
   String? lastFunction;
@@ -103,10 +104,28 @@ void main() {
       ..responses['generate-model'] = {'job_id': 'job-model'};
     final gateway = DefaultGenerationGateway(invoker);
 
-    final jobId = await gateway.generateModel('asset-1');
+    final jobId = await gateway.generateModel(
+      'asset-1',
+      settings: const ModelGenerationSettings(
+        preset: ModelQualityPreset.lowPoly,
+        topology: ModelTopology.quads,
+        faceLimit: 12000,
+        texture: true,
+        pbr: false,
+        enableImageAutofix: true,
+      ),
+    );
 
     expect(jobId, 'job-model');
     expect(invoker.lastFunction, 'generate-model');
-    expect(invoker.lastBody, {'asset_result_id': 'asset-1'});
+    expect(invoker.lastBody, {
+      'asset_result_id': 'asset-1',
+      'quality_preset': 'low_poly',
+      'topology': 'quads',
+      'face_limit': 12000,
+      'texture': true,
+      'pbr': false,
+      'enable_image_autofix': true,
+    });
   });
 }
