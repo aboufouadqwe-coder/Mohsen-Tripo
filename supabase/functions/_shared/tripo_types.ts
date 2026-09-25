@@ -19,6 +19,13 @@ export type TripoCreateImageToImageRequest = {
 
 export type TripoCreateImageToModelRequest = {
   input: string;
+  model: string;
+  faceLimit?: number;
+  quad?: boolean;
+  geometryQuality?: "standard" | "detailed";
+  texture: boolean;
+  pbr: boolean;
+  enableImageAutofix: boolean;
 };
 
 export type TripoTask = {
