@@ -12,12 +12,6 @@ final class TripoAccountCard extends StatefulWidget {
 
   final TripoAccountController controller;
 
-  @override
-  State<TripoAccountCard> createState() => _TripoAccountCardState();
-}
-
-final class _TripoAccountCardState extends State<TripoAccountCard>
-    with WidgetsBindingObserver {
   static final Uri _consoleUri = Uri.parse('https://platform.tripo3d.ai');
 
   static Future<String?> readClipboardText() async {
@@ -28,6 +22,12 @@ final class _TripoAccountCardState extends State<TripoAccountCard>
   static Future<bool> openConsoleInChrome() =>
       launchUrl(_consoleUri, mode: LaunchMode.externalApplication);
 
+  @override
+  State<TripoAccountCard> createState() => _TripoAccountCardState();
+}
+
+final class _TripoAccountCardState extends State<TripoAccountCard>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
