@@ -85,6 +85,28 @@ void main() {
     );
   });
 
+  test('polling reports intermediate job progress updates', () async {
+    final gateway = FakePollingGateway([
+      job(GenerationStatus.running, progress: 0.2),
+      job(GenerationStatus.running, progress: 0.86),
+      job(GenerationStatus.success, progress: 1),
+    ]);
+    final updates = <double>[];
+
+    final service = JobPollingService(
+      gateway: gateway,
+      delay: (_) async {},
+    );
+
+    final result = await service.pollUntilTerminalWithUpdates(
+      'job-1',
+      (updated) => updates.add(updated.progress),
+    );
+
+    expect(result.status, GenerationStatus.success);
+    expect(updates, [0.2, 0.86, 1]);
+  });
+
   test('terminal job returns without sleeping again', () async {
     final delays = <Duration>[];
     final service = JobPollingService(
