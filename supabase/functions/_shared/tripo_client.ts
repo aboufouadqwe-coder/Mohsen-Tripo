@@ -68,6 +68,78 @@ export class TripoClient {
     });
   }
 
+  async uploadImageFromUrl(sourceUrl: string): Promise<string> {
+    let source: Response;
+    try {
+      source = await fetch(sourceUrl);
+    } catch (cause) {
+      throw new ProviderError(
+        "input_fetch_failed",
+        "Unable to read the private reference image before upload.",
+        undefined,
+        undefined,
+        { cause },
+      );
+    }
+
+    if (!source.ok) {
+      throw new ProviderError(
+        "input_fetch_failed",
+        `Private reference image fetch failed with status ${source.status}.`,
+      );
+    }
+
+    const mimeType = (source.headers.get("content-type") ?? "")
+      .split(";")[0]
+      .trim()
+      .toLowerCase();
+    const extension = mimeType === "image/jpeg"
+      ? "jpg"
+      : mimeType === "image/png"
+      ? "png"
+      : null;
+
+    if (extension === null) {
+      throw new ProviderError(
+        "unsupported_input",
+        "Reference image must be PNG or JPEG for Tripo file upload.",
+      );
+    }
+
+    const bytes = await source.arrayBuffer();
+    if (bytes.byteLength === 0) {
+      throw new ProviderError(
+        "empty_input",
+        "Reference image was empty.",
+      );
+    }
+
+    const form = new FormData();
+    form.append(
+      "file",
+      new Blob([bytes], { type: mimeType }),
+      `reference.${extension}`,
+    );
+
+    const data = await this.#requestData("/files", {
+      method: "POST",
+      body: form,
+    });
+
+    if (
+      !isRecord(data) ||
+      typeof data.file_token !== "string" ||
+      data.file_token.trim().length === 0
+    ) {
+      throw new ProviderError(
+        "malformed_response",
+        "Tripo file upload response is missing file_token.",
+      );
+    }
+
+    return data.file_token;
+  }
+
   async createImageToImage(request: TripoCreateImageToImageRequest): Promise<string> {
     return await this.#createTask("/generation/image-to-image", {
       input: request.input,
