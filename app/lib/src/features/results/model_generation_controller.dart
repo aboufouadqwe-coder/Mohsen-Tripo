@@ -8,15 +8,21 @@ import '../../domain/assets/asset_result.dart';
 import '../../domain/generation/generation_job.dart';
 
 typedef ModelJobPoller = Future<GenerationJob> Function(String jobId);
+typedef ModelJobProgressPoller = Future<GenerationJob> Function(
+  String jobId,
+  void Function(GenerationJob job) onUpdate,
+);
 
 final class ModelGenerationController extends ChangeNotifier {
   ModelGenerationController({
     required this.gateway,
     required this.pollUntilTerminal,
+    this.pollUntilTerminalWithUpdates,
   });
 
   final GenerationGateway gateway;
   final ModelJobPoller pollUntilTerminal;
+  final ModelJobProgressPoller? pollUntilTerminalWithUpdates;
 
   bool isBusy = false;
   String? activeAssetResultId;
@@ -111,7 +117,17 @@ final class ModelGenerationController extends ChangeNotifier {
   }
 
   Future<void> _pollModelJob(String jobId) async {
-    final terminal = await pollUntilTerminal(jobId);
+    final progressPoller = pollUntilTerminalWithUpdates;
+    final terminal = progressPoller == null
+        ? await pollUntilTerminal(jobId)
+        : await progressPoller(
+            jobId,
+            (updatedJob) {
+              if (_disposed) return;
+              job = updatedJob;
+              _notify();
+            },
+          );
     if (_disposed) return;
 
     job = terminal;
