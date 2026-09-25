@@ -42,6 +42,8 @@ final class FakeBatchGateway implements GenerationGateway {
   Future<String> generateImagePart({
     required String projectId,
     required String partKey,
+    String? partLabel,
+    String? partPrompt,
     String? customInstructions,
   }) async {
     events.add('submit:$partKey');
@@ -95,7 +97,11 @@ void main() {
     );
 
     await controller.generateAll(
-      parts: const ['head', 'left_hand', 'right_hand'],
+      parts: const [
+        GenerationPartRequest(key: 'head', label: 'Head', prompt: 'head prompt'),
+        GenerationPartRequest(key: 'left_hand', label: 'Left Hand', prompt: 'left prompt'),
+        GenerationPartRequest(key: 'right_hand', label: 'Right Hand', prompt: 'right prompt'),
+      ],
     );
 
     expect(controller.state['head']!.isSuccess, isTrue);
@@ -123,7 +129,11 @@ void main() {
     );
 
     await controller.generateAll(
-      parts: const ['head', 'left_hand', 'right_hand'],
+      parts: const [
+        GenerationPartRequest(key: 'head', label: 'Head', prompt: 'head prompt'),
+        GenerationPartRequest(key: 'left_hand', label: 'Left Hand', prompt: 'left prompt'),
+        GenerationPartRequest(key: 'right_hand', label: 'Right Hand', prompt: 'right prompt'),
+      ],
     );
 
     expect(
@@ -131,6 +141,33 @@ void main() {
       ['submit:head', 'submit:left_hand', 'submit:right_hand'],
     );
     expect(gateway.events[3].startsWith('poll:'), isTrue);
+  });
+
+  test('single-part generation submits and polls only requested part', () async {
+    final gateway = FakeBatchGateway()
+      ..resultQueueByPart['custom-1'] = [
+        successJob('custom-1', 'custom-result'),
+      ];
+
+    final controller = GenerationBatchController(
+      gateway: gateway,
+      pollingService: JobPollingService(
+        gateway: gateway,
+        delay: (_) async {},
+      ),
+      projectId: 'project-1',
+    );
+
+    await controller.generatePart(
+      const GenerationPartRequest(
+        key: 'custom-1',
+        label: 'Arm with shoulder',
+        prompt: 'Keep the same arm angle.',
+      ),
+    );
+
+    expect(gateway.events, ['submit:custom-1', 'poll:custom-1']);
+    expect(controller.state['custom-1']!.isSuccess, isTrue);
   });
 
   test('retry creates a new provider job and replaces only latest part state',
@@ -150,11 +187,21 @@ void main() {
       projectId: 'project-1',
     );
 
-    await controller.generateAll(parts: const ['head']);
+    await controller.generateAll(
+      parts: const [
+        GenerationPartRequest(key: 'head', label: 'Head', prompt: 'head prompt'),
+      ],
+    );
     final firstJobId = controller.state['head']!.jobId;
     expect(controller.state['head']!.isFailure, isTrue);
 
-    await controller.regeneratePart('head');
+    await controller.regeneratePart(
+      const GenerationPartRequest(
+        key: 'head',
+        label: 'Head',
+        prompt: 'head prompt',
+      ),
+    );
     final secondJobId = controller.state['head']!.jobId;
 
     expect(firstJobId, isNot(secondJobId));
