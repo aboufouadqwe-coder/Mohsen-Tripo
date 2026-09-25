@@ -53,7 +53,7 @@ Deno.test("model output normalizes uncommon binary MIME types to GLB", () => {
     providerOutputTarget("generated-models", "binary/octet-stream"),
     {
       extension: "glb",
-      mimeType: "binary/octet-stream",
+      mimeType: "model/gltf-binary",
     },
   );
 });
