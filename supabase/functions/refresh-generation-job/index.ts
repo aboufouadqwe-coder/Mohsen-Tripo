@@ -291,18 +291,9 @@ export function providerOutputTarget(
   mimeType: string,
 ): { extension: string; mimeType: string } {
   if (bucket === "generated-models") {
-    const normalized = mimeType.trim().toLowerCase();
-    const accepted = new Set([
-      "model/gltf-binary",
-      "application/octet-stream",
-      "application/x-binary",
-      "binary/octet-stream",
-    ]);
     return {
       extension: "glb",
-      mimeType: accepted.has(normalized)
-        ? normalized
-        : "model/gltf-binary",
+      mimeType: "model/gltf-binary",
     };
   }
 
