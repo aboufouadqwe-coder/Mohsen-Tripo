@@ -38,6 +38,7 @@ final class FakeModelGateway implements GenerationGateway {
     String? partLabel,
     String? partPrompt,
     String? customInstructions,
+    String? referenceStoragePath,
   }) {
     throw UnimplementedError();
   }
