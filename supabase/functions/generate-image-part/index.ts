@@ -52,7 +52,17 @@ export function createGenerateImagePartHandler(
       const body = await readJsonObject(request);
       const projectId = requiredString(body, "project_id");
       const partKey = requiredString(body, "part_key");
+      const directPartLabel = optionalString(body, "part_label");
+      const directPartPrompt = optionalString(body, "part_prompt");
       const customInstructions = optionalString(body, "custom_instructions");
+
+      if ((directPartLabel === undefined) !== (directPartPrompt === undefined)) {
+        throw new HttpError(
+          400,
+          "invalid_prompt",
+          "part_label and part_prompt must be provided together.",
+        );
+      }
 
       const project = await deps.findOwnedProject(userId, projectId);
       if (project === null) {
@@ -61,25 +71,47 @@ export function createGenerateImagePartHandler(
       if (!project.referenceImagePath) {
         throw new HttpError(400, "missing_reference", "Project requires a reference image.");
       }
-      if (!project.templateId) {
-        throw new HttpError(400, "missing_template", "Project requires an asset template.");
-      }
-
-      const part = await deps.findTemplatePart(project.templateId, partKey, userId);
-      if (part === null) {
-        throw new HttpError(404, "not_found", "Template part was not found.");
-      }
-
+      let part: TemplatePart;
       let prompt: string;
-      try {
-        prompt = buildAssetPrompt({
-          projectIdentity: project.identityPrompt,
-          partLabel: part.label,
-          partPrompt: part.promptFragment,
-          customInstructions,
-        });
-      } catch {
-        throw new HttpError(400, "invalid_prompt", "Part generation instructions are invalid.");
+
+      if (directPartLabel !== undefined && directPartPrompt !== undefined) {
+        const label = directPartLabel.trim();
+        const exactPrompt = directPartPrompt.trim();
+        if (label.length === 0 || exactPrompt.length === 0 || exactPrompt.length > 4000) {
+          throw new HttpError(
+            400,
+            "invalid_prompt",
+            "Direct part label and prompt must be non-empty and within limits.",
+          );
+        }
+
+        part = {
+          key: partKey,
+          label,
+          promptFragment: exactPrompt,
+        };
+        prompt = exactPrompt;
+      } else {
+        if (!project.templateId) {
+          throw new HttpError(400, "missing_template", "Project requires an asset template.");
+        }
+
+        const templatePart = await deps.findTemplatePart(project.templateId, partKey, userId);
+        if (templatePart === null) {
+          throw new HttpError(404, "not_found", "Template part was not found.");
+        }
+        part = templatePart;
+
+        try {
+          prompt = buildAssetPrompt({
+            projectIdentity: project.identityPrompt,
+            partLabel: part.label,
+            partPrompt: part.promptFragment,
+            customInstructions,
+          });
+        } catch {
+          throw new HttpError(400, "invalid_prompt", "Part generation instructions are invalid.");
+        }
       }
 
       const referenceUrl = await deps.signReferenceUrl(project.referenceImagePath);
@@ -99,6 +131,7 @@ export function createGenerateImagePartHandler(
         request_payload_redacted: {
           part_key: part.key,
           custom_instructions_present: customInstructions !== undefined,
+          prompt_source: directPartPrompt === undefined ? "template" : "client_exact",
         },
       });
 
