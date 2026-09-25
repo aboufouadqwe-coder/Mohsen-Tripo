@@ -14,6 +14,7 @@ abstract interface class GenerationGateway {
     String? partLabel,
     String? partPrompt,
     String? customInstructions,
+    String? referenceStoragePath,
   });
 
   Future<GenerationJob> refreshJob(String jobId);
@@ -84,6 +85,7 @@ final class DefaultGenerationGateway
     String? partLabel,
     String? partPrompt,
     String? customInstructions,
+    String? referenceStoragePath,
   }) async {
     final body = <String, Object?>{
       'project_id': projectId,
@@ -95,6 +97,10 @@ final class DefaultGenerationGateway
     }
     if (customInstructions != null) {
       body['custom_instructions'] = customInstructions;
+    }
+    if (referenceStoragePath != null &&
+        referenceStoragePath.trim().isNotEmpty) {
+      body['reference_storage_path'] = referenceStoragePath.trim();
     }
 
     return _invokeForJobId('generate-image-part', body);
