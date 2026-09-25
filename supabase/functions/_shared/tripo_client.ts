@@ -71,7 +71,7 @@ export class TripoClient {
   async uploadImageFromUrl(sourceUrl: string): Promise<string> {
     let source: Response;
     try {
-      source = await fetch(sourceUrl);
+      source = await this.#fetcher(sourceUrl);
     } catch (cause) {
       throw new ProviderError(
         "input_fetch_failed",
@@ -170,6 +170,30 @@ export class TripoClient {
     }
 
     return await this.#createTask("/generation/image-to-model", body);
+  }
+
+  async getBalance(): Promise<{ balance: number; frozen: number }> {
+    const data = await this.#requestData("/account/balance", {
+      method: "GET",
+    });
+
+    if (
+      !isRecord(data) ||
+      typeof data.balance !== "number" ||
+      !Number.isFinite(data.balance) ||
+      typeof data.frozen !== "number" ||
+      !Number.isFinite(data.frozen)
+    ) {
+      throw new ProviderError(
+        "malformed_response",
+        "Tripo balance response is malformed.",
+      );
+    }
+
+    return {
+      balance: data.balance,
+      frozen: data.frozen,
+    };
   }
 
   async getTask(taskId: string): Promise<TripoTask> {
