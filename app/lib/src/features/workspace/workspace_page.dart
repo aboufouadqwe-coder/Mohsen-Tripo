@@ -10,11 +10,13 @@ import '../../data/supabase/results_repository.dart';
 import '../../data/supabase/template_repository.dart';
 import '../../domain/assets/asset_result.dart';
 import '../../domain/generation/generation_job.dart';
+import '../../domain/generation/model_generation_settings.dart';
 import '../../domain/projects/project.dart';
 import '../../domain/templates/asset_template.dart';
 import '../../domain/templates/builtin_templates.dart';
 import '../results/generated_image_downloader.dart';
 import '../results/model_generation_controller.dart';
+import '../results/model_generation_settings_panel.dart';
 import '../results/results_gallery.dart';
 import 'generation_batch_controller.dart';
 import 'job_polling_service.dart';
@@ -60,6 +62,8 @@ final class _WorkspacePageState extends State<WorkspacePage> {
   String? _lastModelTerminalJobId;
   final GeneratedImageDownloader _imageDownloader =
       const GeneratedImageDownloader();
+  ModelGenerationSettings _modelSettings =
+      const ModelGenerationSettings();
 
   @override
   void initState() {
@@ -371,7 +375,10 @@ final class _WorkspacePageState extends State<WorkspacePage> {
   Future<void> _generateModel(AssetResult asset) async {
     final controller = _modelController;
     if (controller == null) return;
-    await controller.generateFromImage(asset);
+    await controller.generateFromImage(
+      asset,
+      settings: _modelSettings,
+    );
   }
 
   Future<void> _downloadImage(
@@ -497,6 +504,14 @@ final class _WorkspacePageState extends State<WorkspacePage> {
                   project.referenceImagePath == null ? null : _generatePart,
             ),
             const SizedBox(height: 24),
+            ModelGenerationSettingsPanel(
+              settings: _modelSettings,
+              disabled: modelController?.isBusy ?? false,
+              onChanged: (settings) {
+                setState(() => _modelSettings = settings);
+              },
+            ),
+            const SizedBox(height: 16),
             ResultsGallery(
               projectId: project.id,
               repository: widget.resultsRepository,
