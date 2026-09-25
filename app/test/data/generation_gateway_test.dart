@@ -54,6 +54,27 @@ void main() {
     });
   });
 
+  test('generateImagePart forwards exact part label and prompt', () async {
+    final invoker = FakeFunctionInvoker()
+      ..responses['generate-image-part'] = {'job_id': 'job-part'};
+    final gateway = DefaultGenerationGateway(invoker);
+
+    final jobId = await gateway.generateImagePart(
+      projectId: 'project-1',
+      partKey: 'custom-1',
+      partLabel: 'Arm with shoulder',
+      partPrompt: 'Keep the same arm angle and silhouette.',
+    );
+
+    expect(jobId, 'job-part');
+    expect(invoker.lastBody, {
+      'project_id': 'project-1',
+      'part_key': 'custom-1',
+      'part_label': 'Arm with shoulder',
+      'part_prompt': 'Keep the same arm angle and silhouette.',
+    });
+  });
+
   test('refreshJob maps provider-neutral job response', () async {
     final invoker = FakeFunctionInvoker()
       ..responses['refresh-generation-job'] = {
