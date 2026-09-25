@@ -56,6 +56,10 @@ export function createGenerateImagePartHandler(
       const directPartLabel = optionalString(body, "part_label");
       const directPartPrompt = optionalString(body, "part_prompt");
       const customInstructions = optionalString(body, "custom_instructions");
+      const requestedReferencePath = optionalString(
+        body,
+        "reference_storage_path",
+      );
 
       if ((directPartLabel === undefined) !== (directPartPrompt === undefined)) {
         throw new HttpError(
@@ -71,6 +75,24 @@ export function createGenerateImagePartHandler(
       }
       if (!project.referenceImagePath) {
         throw new HttpError(400, "missing_reference", "Project requires a reference image.");
+      }
+
+      let referencePath = project.referenceImagePath;
+      if (requestedReferencePath !== undefined) {
+        const normalizedReferencePath = requestedReferencePath.trim();
+        const requiredPrefix = userId + "/" + project.id + "/parts/";
+        if (
+          normalizedReferencePath.length === 0 ||
+          normalizedReferencePath.includes("..") ||
+          !normalizedReferencePath.startsWith(requiredPrefix)
+        ) {
+          throw new HttpError(
+            400,
+            "invalid_reference",
+            "Part reference path is outside the owned project crop area.",
+          );
+        }
+        referencePath = normalizedReferencePath;
       }
       let part: TemplatePart;
       let prompt: string;
@@ -115,7 +137,7 @@ export function createGenerateImagePartHandler(
         }
       }
 
-      const referenceUrl = await deps.signReferenceUrl(project.referenceImagePath);
+      const referenceUrl = await deps.signReferenceUrl(referencePath);
       const providerInput = await deps.uploadReferenceToProvider(referenceUrl);
       const providerTaskId = await deps.createImageToImage({
         input: providerInput,
@@ -135,6 +157,7 @@ export function createGenerateImagePartHandler(
           custom_instructions_present: customInstructions !== undefined,
           prompt_source: directPartPrompt === undefined ? "template" : "client_exact",
           provider_input_source: "file_token",
+          cropped_reference_used: requestedReferencePath !== undefined,
         },
       });
 
