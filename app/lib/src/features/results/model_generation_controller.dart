@@ -94,6 +94,65 @@ final class ModelGenerationController extends ChangeNotifier {
     }
   }
 
+  Future<void> generateFromReferencePath({
+    required String projectId,
+    required String referenceStoragePath,
+    ModelGenerationSettings settings = const ModelGenerationSettings(),
+  }) async {
+    if (_disposed || isBusy) return;
+
+    final directGateway = gateway;
+    if (directGateway is! DirectModelGenerationGateway ||
+        projectId.trim().isEmpty ||
+        referenceStoragePath.trim().isEmpty) {
+      errorCode = 'direct_image_unavailable';
+      _notify();
+      return;
+    }
+
+    isBusy = true;
+    activeAssetResultId = null;
+    errorCode = null;
+    job = null;
+    _notify();
+
+    _capture(
+      AnalyticsEvents.modelGenerationStarted,
+      const {'source_mime_type': 'image/direct-upload'},
+    );
+
+    try {
+      final jobId = await directGateway.generateModelFromReferencePath(
+        projectId: projectId.trim(),
+        referenceStoragePath: referenceStoragePath.trim(),
+        settings: settings,
+      );
+      if (_disposed) return;
+
+      job = GenerationJob(
+        id: jobId,
+        projectId: projectId.trim(),
+        provider: 'tripo',
+        operation: GenerationOperation.imageToModel,
+        status: GenerationStatus.queued,
+        progress: 0,
+      );
+      _notify();
+
+      await _pollModelJob(jobId);
+    } catch (_) {
+      if (_disposed) return;
+      errorCode = 'model_generation_failed';
+      _capture(
+        AnalyticsEvents.modelGenerationFailed,
+        const {'error_code': 'direct_image_request_failed'},
+      );
+      _notify();
+    } finally {
+      _finishBusyState();
+    }
+  }
+
   Future<void> resumeJob(GenerationJob activeJob) async {
     if (_disposed ||
         isBusy ||
