@@ -67,25 +67,7 @@ final class ModelGenerationController extends ChangeNotifier {
       );
       _notify();
 
-      final terminal = await pollUntilTerminal(jobId);
-      if (_disposed) return;
-
-      job = terminal;
-      if (terminal.status == GenerationStatus.success) {
-        _capture(
-          AnalyticsEvents.modelGenerationCompleted,
-          {
-            'output_mime_type': terminal.mimeType ?? 'model/gltf-binary',
-          },
-        );
-      } else {
-        errorCode = terminal.errorCode ?? 'model_generation_failed';
-        _capture(
-          AnalyticsEvents.modelGenerationFailed,
-          {'error_code': errorCode!},
-        );
-      }
-      _notify();
+      await _pollModelJob(jobId);
     } catch (_) {
       if (_disposed) return;
       errorCode = 'model_generation_failed';
@@ -95,12 +77,67 @@ final class ModelGenerationController extends ChangeNotifier {
       );
       _notify();
     } finally {
-      if (!_disposed) {
-        isBusy = false;
-        activeAssetResultId = null;
-        _notify();
-      }
+      _finishBusyState();
     }
+  }
+
+  Future<void> resumeJob(GenerationJob activeJob) async {
+    if (_disposed ||
+        isBusy ||
+        activeJob.isTerminal ||
+        activeJob.operation != GenerationOperation.imageToModel) {
+      return;
+    }
+
+    isBusy = true;
+    activeAssetResultId = null;
+    errorCode = null;
+    job = activeJob;
+    _notify();
+
+    try {
+      await _pollModelJob(activeJob.id);
+    } catch (_) {
+      if (_disposed) return;
+      errorCode = 'model_generation_failed';
+      _capture(
+        AnalyticsEvents.modelGenerationFailed,
+        const {'error_code': 'resume_failed'},
+      );
+      _notify();
+    } finally {
+      _finishBusyState();
+    }
+  }
+
+  Future<void> _pollModelJob(String jobId) async {
+    final terminal = await pollUntilTerminal(jobId);
+    if (_disposed) return;
+
+    job = terminal;
+    if (terminal.status == GenerationStatus.success) {
+      errorCode = null;
+      _capture(
+        AnalyticsEvents.modelGenerationCompleted,
+        {
+          'output_mime_type': terminal.mimeType ?? 'model/gltf-binary',
+        },
+      );
+    } else {
+      errorCode = terminal.errorCode ?? 'model_generation_failed';
+      _capture(
+        AnalyticsEvents.modelGenerationFailed,
+        {'error_code': errorCode!},
+      );
+    }
+    _notify();
+  }
+
+  void _finishBusyState() {
+    if (_disposed) return;
+    isBusy = false;
+    activeAssetResultId = null;
+    _notify();
   }
 
   void _notify() {
