@@ -43,7 +43,7 @@ final class DefaultResultsRepository implements ResultsRepository {
             signedUrls[asset.id] = await dataSource.createSignedUrl(
               bucket: asset.isImage ? 'generated-images' : 'generated-models',
               path: asset.storagePath,
-              expiresIn: 300,
+              expiresIn: 3600,
             );
           } catch (_) {
             // Keep history visible even when a temporary URL cannot be signed.
