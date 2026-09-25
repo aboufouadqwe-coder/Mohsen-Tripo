@@ -14,16 +14,15 @@ typedef ImageBytesSaver = Future<void> Function({
 
 final class GeneratedImageDownloader {
   const GeneratedImageDownloader({
-    ImageBytesFetcher? fetcher,
-    ImageBytesSaver? saver,
-  })  : _fetcher = fetcher,
-        _saver = saver;
+    this.fetcher,
+    this.saver,
+  });
 
   static const _channel =
       MethodChannel('com.mohsentripo.mohsen_tripo/media');
 
-  final ImageBytesFetcher? _fetcher;
-  final ImageBytesSaver? _saver;
+  final ImageBytesFetcher? fetcher;
+  final ImageBytesSaver? saver;
 
   Future<void> download(
     AssetResult asset,
@@ -38,7 +37,7 @@ final class GeneratedImageDownloader {
       throw StateError('Image URL is invalid.');
     }
 
-    final bytes = await (_fetcher ?? _downloadBytes)(signedUrl);
+    final bytes = await (fetcher ?? _downloadBytes)(signedUrl);
     if (bytes.isEmpty) {
       throw StateError('Downloaded image is empty.');
     }
@@ -51,8 +50,8 @@ final class GeneratedImageDownloader {
     };
 
     final fileName = 'Mohsen-Tripo-${asset.id}.$extension';
-    final saver = _saver ?? _saveToGallery;
-    await saver(
+    final imageSaver = saver ?? _saveToGallery;
+    await imageSaver(
       bytes: bytes,
       fileName: fileName,
       mimeType: asset.mimeType,
