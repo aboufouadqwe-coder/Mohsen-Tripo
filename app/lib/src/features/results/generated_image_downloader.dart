@@ -71,13 +71,16 @@ final class GeneratedImageDownloader {
       throw StateError('Model URL is invalid.');
     }
 
-    final fileName = 'Mohsen-Tripo-${asset.id}.glb';
+    final extension = asset.isFbx ? 'fbx' : 'glb';
+    final mimeType =
+        asset.isFbx ? 'application/octet-stream' : 'model/gltf-binary';
+    final fileName = 'Mohsen-Tripo-${asset.id}.$extension';
     final savedUri = await _channel.invokeMethod<String>(
       'saveModelFromUrl',
       {
         'url': signedUrl,
         'fileName': fileName,
-        'mimeType': 'model/gltf-binary',
+        'mimeType': mimeType,
       },
     );
     if (savedUri == null || savedUri.trim().isEmpty) {
