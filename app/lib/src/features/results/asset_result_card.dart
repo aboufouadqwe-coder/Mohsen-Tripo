@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:model_viewer_plus/model_viewer_plus.dart';
 
 import '../../domain/assets/asset_result.dart';
 import '../../domain/generation/generation_job.dart';
@@ -13,12 +14,18 @@ typedef ResultImageDownload = Future<void> Function(
   String signedUrl,
 );
 
+typedef ResultModelPreviewBuilder = Widget Function(
+  BuildContext context,
+  String url,
+);
+
 final class AssetResultCard extends StatelessWidget {
   const AssetResultCard({
     super.key,
     required this.entry,
     this.onGenerateModel,
     this.imagePreviewBuilder,
+    this.modelPreviewBuilder,
     this.onDownloadImage,
     this.modelGenerationBusy = false,
     this.activeModelAssetResultId,
@@ -27,6 +34,7 @@ final class AssetResultCard extends StatelessWidget {
   final ResultHistoryEntry entry;
   final Future<void> Function(AssetResult asset)? onGenerateModel;
   final ResultImagePreviewBuilder? imagePreviewBuilder;
+  final ResultModelPreviewBuilder? modelPreviewBuilder;
   final ResultImageDownload? onDownloadImage;
   final bool modelGenerationBusy;
   final String? activeModelAssetResultId;
@@ -68,11 +76,31 @@ final class AssetResultCard extends StatelessWidget {
     );
   }
 
+  Widget _defaultModelPreview(BuildContext context, String url) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        height: 360,
+        child: ModelViewer(
+          src: url,
+          alt: 'نموذج 3D مولد',
+          ar: false,
+          autoRotate: true,
+          cameraControls: true,
+          backgroundColor: Theme.of(context).colorScheme.surface,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final imageAsset = entry.firstImageAsset;
     final signedImageUrl =
         imageAsset == null ? null : entry.signedUrlFor(imageAsset);
+    final modelAsset = entry.modelAsset;
+    final signedModelUrl =
+        modelAsset == null ? null : entry.signedUrlFor(modelAsset);
     final usableImage = entry.hasUsableAsset &&
             entry.job.operation != GenerationOperation.imageToModel
         ? imageAsset
@@ -117,15 +145,30 @@ final class AssetResultCard extends StatelessWidget {
                 label: const Text('تنزيل الصورة'),
               ),
             ],
-            if (entry.modelAsset != null) ...[
+            if (modelAsset != null) ...[
               const SizedBox(height: 10),
               const Row(
                 children: [
                   Icon(Icons.view_in_ar_outlined),
                   SizedBox(width: 8),
-                  Text('نموذج GLB محفوظ'),
+                  Text('نموذج 3D'),
                 ],
               ),
+              if (signedModelUrl != null) ...[
+                const SizedBox(height: 10),
+                (modelPreviewBuilder ?? _defaultModelPreview)(
+                  context,
+                  signedModelUrl,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'اسحب لتدوير المجسم، واستخدم إصبعين للتكبير والتصغير.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ] else ...[
+                const SizedBox(height: 8),
+                const Text('تعذر تحميل رابط عرض المجسم.'),
+              ],
             ],
             if (entry.job.errorCode != null) ...[
               const SizedBox(height: 8),
