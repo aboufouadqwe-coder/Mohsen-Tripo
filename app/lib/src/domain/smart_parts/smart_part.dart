@@ -42,15 +42,15 @@ final class NormalizedRegion {
       bottom > top;
 
   NormalizedRegion clamp() {
-    final l = left.clamp(0.0, 1.0);
-    final t = top.clamp(0.0, 1.0);
-    final r = right.clamp(0.0, 1.0);
-    final b = bottom.clamp(0.0, 1.0);
+    final l = left.clamp(0.0, 1.0).toDouble();
+    final t = top.clamp(0.0, 1.0).toDouble();
+    final r = right.clamp(0.0, 1.0).toDouble();
+    final b = bottom.clamp(0.0, 1.0).toDouble();
     return NormalizedRegion(
       left: l,
       top: t,
-      right: r <= l ? (l + 0.01).clamp(0.0, 1.0) : r,
-      bottom: b <= t ? (t + 0.01).clamp(0.0, 1.0) : b,
+      right: r <= l ? (l + 0.01).clamp(0.0, 1.0).toDouble() : r,
+      bottom: b <= t ? (t + 0.01).clamp(0.0, 1.0).toDouble() : b,
     );
   }
 }
