@@ -1,4 +1,4 @@
-name: Verify and release exact-prompt APK
+name: Verify and release media-3d fix APK
 
 on:
   push:
@@ -6,6 +6,8 @@ on:
       - feature/android-mvp
     paths:
       - .github/workflows/build-exact-prompt-once.yml
+      - app/**
+      - supabase/functions/**
 
 permissions:
   contents: write
@@ -55,7 +57,7 @@ jobs:
       - name: Upload release APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mohsen-tripo-exact-prompt-fix
+          name: mohsen-tripo-media-3d-fix
           path: app/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           retention-days: 30
@@ -64,10 +66,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="android-mvp-exact-prompt-${GITHUB_SHA::7}"
-          cp app/build/app/outputs/flutter-apk/app-release.apk /tmp/Mohsen-Tripo-exact-prompt-fix.apk
-          gh release create "$TAG" /tmp/Mohsen-Tripo-exact-prompt-fix.apk \
+          TAG="android-mvp-media-3d-${GITHUB_SHA::7}"
+          cp app/build/app/outputs/flutter-apk/app-release.apk /tmp/Mohsen-Tripo-media-3d-fix.apk
+          gh release create "$TAG" /tmp/Mohsen-Tripo-media-3d-fix.apk \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Mohsen-Tripo Exact Prompt Fix" \
-            --notes "Android release built from feature/android-mvp. Includes Custom Prompt -> Generate this part flow and exact part_prompt forwarding to Supabase."
+            --title "Mohsen-Tripo Media + 3D Fix" \
+            --notes "Adds explicit generated-image download to Android gallery, resumes interrupted 3D polling after returning to the workspace, and hardens Tripo GLB persistence."
