@@ -11,6 +11,8 @@ final class PartRequestTile extends StatelessWidget {
     required this.onEnabledChanged,
     this.generationState,
     this.onRetry,
+    this.onGenerate,
+    this.onEdit,
   });
 
   final String label;
@@ -19,6 +21,8 @@ final class PartRequestTile extends StatelessWidget {
   final ValueChanged<bool> onEnabledChanged;
   final GenerationPartState? generationState;
   final VoidCallback? onRetry;
+  final VoidCallback? onGenerate;
+  final VoidCallback? onEdit;
 
   String _statusLabel(GenerationPartState state) {
     return switch (state.phase) {
@@ -54,6 +58,26 @@ final class PartRequestTile extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
             secondary: const Icon(Icons.drag_handle),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            child: Row(
+              children: [
+                TextButton.icon(
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('تعديل Prompt'),
+                ),
+                const Spacer(),
+                FilledButton.tonalIcon(
+                  onPressed: enabled && state?.isActive != true
+                      ? onGenerate
+                      : null,
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('توليد هذا الجزء'),
+                ),
+              ],
+            ),
           ),
           if (state != null)
             Padding(
