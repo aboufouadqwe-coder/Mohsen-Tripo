@@ -22,6 +22,30 @@ GenerationJob imageJob({
   );
 }
 
+GenerationJob modelJob({
+  required String id,
+  required GenerationStatus status,
+}) {
+  return GenerationJob(
+    id: id,
+    projectId: 'project-1',
+    provider: 'tripo',
+    operation: GenerationOperation.imageToModel,
+    status: status,
+    progress: status == GenerationStatus.success ? 1 : 0.86,
+  );
+}
+
+AssetResult modelAsset(String id, String jobId) {
+  return AssetResult(
+    id: id,
+    projectId: 'project-1',
+    generationJobId: jobId,
+    storagePath: 'user-1/project-1/$id.glb',
+    mimeType: 'model/gltf-binary',
+  );
+}
+
 AssetResult imageAsset(String id, String jobId) {
   return AssetResult(
     id: id,
@@ -198,6 +222,46 @@ void main() {
 
     expect(downloadedAssetId, 'asset-download');
     expect(downloadedUrl, 'https://signed.test/download.png');
+  });
+
+
+  testWidgets('successful GLB result renders an interactive model surface',
+      (tester) async {
+    final asset = modelAsset('model-asset-1', 'model-job-1');
+    final repository = FakeResultsRepository([
+      ResultHistoryEntry(
+        job: modelJob(
+          id: 'model-job-1',
+          status: GenerationStatus.success,
+        ),
+        assets: [asset],
+        signedUrlsByAssetId: const {
+          'model-asset-1': 'https://signed.test/model.glb',
+        },
+        createdAt: DateTime.utc(2026, 9, 25, 14),
+      ),
+    ]);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ResultsGallery(
+            projectId: 'project-1',
+            repository: repository,
+            onGenerateModel: (_) async {},
+            modelPreviewBuilder: (context, url) => Text('model-viewer:$url'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('model-viewer:https://signed.test/model.glb'),
+      findsOneWidget,
+    );
+    expect(find.text('نموذج 3D'), findsOneWidget);
+    expect(find.textContaining('اسحب لتدوير المجسم'), findsOneWidget);
   });
 
 }
