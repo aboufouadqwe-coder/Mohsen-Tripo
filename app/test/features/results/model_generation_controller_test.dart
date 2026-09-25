@@ -29,6 +29,8 @@ final class FakeModelGateway implements GenerationGateway {
   Future<String> generateImagePart({
     required String projectId,
     required String partKey,
+    String? partLabel,
+    String? partPrompt,
     String? customInstructions,
   }) {
     throw UnimplementedError();
