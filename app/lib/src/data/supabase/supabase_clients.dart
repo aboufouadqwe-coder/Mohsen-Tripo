@@ -157,7 +157,8 @@ final class SupabaseGenerationJobDataSource implements GenerationJobDataSource {
         .from('generation_jobs')
         .select(
           'id,project_id,part_key,provider,operation,provider_task_id,'
-          'status,progress,error_code,error_message,created_at,completed_at',
+          'status,progress,error_code,error_message,created_at,completed_at,'
+          'provider_credential_fingerprint',
         )
         .eq('project_id', projectId)
         .inFilter('status', const ['queued', 'running'])
