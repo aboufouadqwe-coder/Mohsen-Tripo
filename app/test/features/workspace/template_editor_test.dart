@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mohsen_tripo/src/domain/smart_parts/smart_part.dart';
 import 'package:mohsen_tripo/src/domain/templates/builtin_templates.dart';
 import 'package:mohsen_tripo/src/features/workspace/template_editor.dart';
 
@@ -107,4 +108,54 @@ void main() {
       'head',
     );
   });
+
+  test('smart custom head builds a MetaHuman-ready prompt automatically', () {
+    final controller = TemplateEditorController(
+      initialParts: const [],
+      newKey: () => 'smart-head-1',
+    );
+
+    final added = controller.addCustomPart(
+      label: 'MetaHuman Head',
+      promptFragment: '',
+      promptMode: PartPromptMode.smart,
+    );
+
+    expect(added, isTrue);
+    final part = controller.parts.single;
+    expect(part.kind, SmartPartKind.headClean);
+    expect(part.promptMode, PartPromptMode.smart);
+    expect(part.promptFragment, contains('bald head'));
+    expect(part.promptFragment, contains('Remove all hair'));
+  });
+
+  test('smart suggestions replace list with detected regions intact', () {
+    final controller = TemplateEditorController(
+      initialParts: BuiltinTemplates.characterParts.parts,
+      newKey: () => 'unused',
+    );
+    const region = NormalizedRegion(
+      left: 0.2,
+      top: 0.1,
+      right: 0.8,
+      bottom: 0.55,
+    );
+
+    controller.replaceWithSuggestions(
+      const [
+        SuggestedPart(
+          key: 'head',
+          label: 'Head Clean / Bald',
+          kind: SmartPartKind.headClean,
+          prompt: 'smart head prompt',
+          region: region,
+        ),
+      ],
+    );
+
+    expect(controller.parts, hasLength(1));
+    expect(controller.parts.single.promptMode, PartPromptMode.smart);
+    expect(controller.parts.single.region, same(region));
+  });
+
 }
