@@ -152,15 +152,21 @@ final class AssetResultCard extends StatelessWidget {
               ),
               if (signedModelUrl != null) ...[
                 const SizedBox(height: 10),
-                (modelPreviewBuilder ?? _defaultModelPreview)(
-                  context,
-                  signedModelUrl,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'اسحب لتدوير المجسم، واستخدم إصبعين للتكبير والتصغير.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+                if (modelAsset.isGlb) ...[
+                  (modelPreviewBuilder ?? _defaultModelPreview)(
+                    context,
+                    signedModelUrl,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'اسحب لتدوير المجسم، واستخدم إصبعين للتكبير والتصغير.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ] else if (modelAsset.isFbx) ...[
+                  const Text(
+                    'هذا المجسم بصيغة FBX (Quad). يمكن تنزيله، لكن العارض الداخلي يدعم GLB فقط.',
+                  ),
+                ],
                 if (canDownloadModel) ...[
                   const SizedBox(height: 10),
                   OutlinedButton.icon(
