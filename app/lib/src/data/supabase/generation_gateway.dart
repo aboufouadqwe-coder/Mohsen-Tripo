@@ -1,6 +1,7 @@
 import '../../core/errors/app_failure.dart';
 import '../../domain/generation/generation_job.dart';
 import '../../domain/generation/model_generation_settings.dart';
+import '../../domain/tripo/tripo_credential.dart';
 
 abstract interface class GenerationGateway {
   Future<String> generateSourceImage({
@@ -39,6 +40,10 @@ abstract interface class CreditBalanceGateway {
   Future<TripoCreditBalance> getCreditBalance();
 }
 
+abstract interface class TripoCredentialValidationGateway {
+  Future<TripoCreditBalance> getCreditBalanceForApiKey(String apiKey);
+}
+
 abstract interface class ActiveGenerationJobsGateway {
   Future<List<GenerationJob>> listActiveJobs(String projectId);
 }
@@ -50,19 +55,27 @@ abstract interface class GenerationJobDataSource {
 abstract interface class FunctionInvoker {
   Future<Map<String, Object?>> invoke(
     String functionName,
-    Map<String, Object?> body,
-  );
+    Map<String, Object?> body, {
+    Map<String, String> headers = const {},
+  });
 }
 
 final class DefaultGenerationGateway
-    implements GenerationGateway, ActiveGenerationJobsGateway, CreditBalanceGateway {
-  const DefaultGenerationGateway(
+    implements
+        GenerationGateway,
+        ActiveGenerationJobsGateway,
+        CreditBalanceGateway,
+        TripoCredentialValidationGateway {
+  DefaultGenerationGateway(
     this._invoker, {
     this.jobDataSource,
+    this.credentialProvider,
   });
 
   final FunctionInvoker _invoker;
   final GenerationJobDataSource? jobDataSource;
+  final ActiveTripoCredentialProvider? credentialProvider;
+  final Map<String, String> _jobCredentialFingerprints = {};
 
   @override
   Future<String> generateSourceImage({
@@ -123,11 +136,23 @@ final class DefaultGenerationGateway
   @override
   Future<GenerationJob> refreshJob(String jobId) async {
     try {
+      final fingerprint = _jobCredentialFingerprints[jobId];
+      final credential = await _requireCredential(
+        fingerprint: fingerprint,
+      );
       final response = await _invoker.invoke(
         'refresh-generation-job',
         {'job_id': jobId},
+        headers: _credentialHeaders(credential),
       );
-      return _jobFromFunctionResponse(response);
+      final job = _jobFromFunctionResponse(response);
+      final returnedFingerprint = job.providerCredentialFingerprint;
+      if (returnedFingerprint != null && returnedFingerprint.isNotEmpty) {
+        _jobCredentialFingerprints[job.id] = returnedFingerprint;
+      } else {
+        _jobCredentialFingerprints[job.id] = credential.fingerprint;
+      }
+      return job;
     } on AppFailure {
       rethrow;
     } catch (_) {
@@ -137,10 +162,25 @@ final class DefaultGenerationGateway
 
   @override
   Future<TripoCreditBalance> getCreditBalance() async {
+    final credential = await _requireCredential();
+    return _getBalanceWithKey(credential.apiKey);
+  }
+
+  @override
+  Future<TripoCreditBalance> getCreditBalanceForApiKey(String apiKey) {
+    final normalized = apiKey.trim();
+    if (normalized.isEmpty) {
+      throw AppFailure.validation('Tripo API key is empty.');
+    }
+    return _getBalanceWithKey(normalized);
+  }
+
+  Future<TripoCreditBalance> _getBalanceWithKey(String apiKey) async {
     try {
       final response = await _invoker.invoke(
         'tripo-balance',
         const {},
+        headers: {'x-tripo-api-key': apiKey},
       );
       final balance = response['balance'];
       final frozen = response['frozen'];
@@ -165,7 +205,14 @@ final class DefaultGenerationGateway
 
     try {
       final rows = await source.listActiveJobs(projectId);
-      return rows.map(_jobFromDatabaseRow).toList(growable: false);
+      final jobs = rows.map(_jobFromDatabaseRow).toList(growable: false);
+      for (final job in jobs) {
+        final fingerprint = job.providerCredentialFingerprint;
+        if (fingerprint != null && fingerprint.isNotEmpty) {
+          _jobCredentialFingerprints[job.id] = fingerprint;
+        }
+      }
+      return jobs;
     } on AppFailure {
       rethrow;
     } catch (_) {
@@ -178,11 +225,17 @@ final class DefaultGenerationGateway
     Map<String, Object?> body,
   ) async {
     try {
-      final response = await _invoker.invoke(functionName, body);
+      final credential = await _requireCredential();
+      final response = await _invoker.invoke(
+        functionName,
+        body,
+        headers: _credentialHeaders(credential),
+      );
       final jobId = response['job_id'];
       if (jobId is! String || jobId.trim().isEmpty) {
         throw AppFailure.function();
       }
+      _jobCredentialFingerprints[jobId] = credential.fingerprint;
       return jobId;
     } on AppFailure {
       rethrow;
@@ -190,6 +243,31 @@ final class DefaultGenerationGateway
       throw AppFailure.function();
     }
   }
+
+  Future<TripoCredential> _requireCredential({
+    String? fingerprint,
+  }) async {
+    final provider = credentialProvider;
+    if (provider == null) {
+      throw AppFailure.validation('Connect a Tripo API key first.');
+    }
+
+    final credential = fingerprint == null
+        ? await provider.getActive()
+        : await provider.findByFingerprint(fingerprint);
+    if (credential == null || credential.apiKey.trim().isEmpty) {
+      throw AppFailure.validation(
+        fingerprint == null
+            ? 'Connect a Tripo API key first.'
+            : 'The Tripo key that started this job is not saved on this device.',
+      );
+    }
+    return credential;
+  }
+
+  Map<String, String> _credentialHeaders(TripoCredential credential) => {
+        'x-tripo-api-key': credential.apiKey,
+      };
 
   GenerationJob _jobFromFunctionResponse(Map<String, Object?> response) {
     return _jobFromFields(
@@ -208,6 +286,8 @@ final class DefaultGenerationGateway
       errorMessage: response['error_message'],
       createdAt: response['created_at'],
       completedAt: response['completed_at'],
+      providerCredentialFingerprint:
+          response['provider_credential_fingerprint'],
     );
   }
 
@@ -225,6 +305,8 @@ final class DefaultGenerationGateway
       errorMessage: row['error_message'],
       createdAt: row['created_at'],
       completedAt: row['completed_at'],
+      providerCredentialFingerprint:
+          row['provider_credential_fingerprint'],
     );
   }
 
@@ -244,6 +326,7 @@ final class DefaultGenerationGateway
     Object? errorMessage,
     Object? createdAt,
     Object? completedAt,
+    Object? providerCredentialFingerprint,
   }) {
     if (id is! String ||
         projectId is! String ||
@@ -259,7 +342,9 @@ final class DefaultGenerationGateway
         (errorCode != null && errorCode is! String) ||
         (errorMessage != null && errorMessage is! String) ||
         (createdAt != null && createdAt is! String) ||
-        (completedAt != null && completedAt is! String)) {
+        (completedAt != null && completedAt is! String) ||
+        (providerCredentialFingerprint != null &&
+            providerCredentialFingerprint is! String)) {
       throw AppFailure.function();
     }
 
@@ -292,6 +377,8 @@ final class DefaultGenerationGateway
       createdAt: createdAt is String ? DateTime.tryParse(createdAt) : null,
       completedAt:
           completedAt is String ? DateTime.tryParse(completedAt) : null,
+      providerCredentialFingerprint:
+          providerCredentialFingerprint as String?,
     );
   }
 }
