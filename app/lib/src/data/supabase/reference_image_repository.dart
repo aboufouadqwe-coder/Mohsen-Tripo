@@ -59,6 +59,79 @@ final class DefaultReferenceImageRepository
   final ReferenceStoragePort _storage;
 
   @override
+  Future<Uint8List> downloadReference(String path) {
+    final normalized = path.trim();
+    if (normalized.isEmpty) {
+      throw AppFailure.validation('Reference image path is empty.');
+    }
+    return _storage.downloadReference(normalized);
+  }
+
+  @override
+  Future<String> createPartReferenceCrop({
+    required String userId,
+    required String projectId,
+    required String partKey,
+    required String sourcePath,
+    required NormalizedRegion region,
+  }) async {
+    if (userId.trim().isEmpty ||
+        projectId.trim().isEmpty ||
+        partKey.trim().isEmpty ||
+        sourcePath.trim().isEmpty ||
+        !region.isValid) {
+      throw AppFailure.validation('Part crop information is incomplete.');
+    }
+
+    try {
+      final bytes = await _storage.downloadReference(sourcePath.trim());
+      final source = img.decodeImage(bytes);
+      if (source == null || source.width <= 0 || source.height <= 0) {
+        throw AppFailure.storage();
+      }
+
+      final clamped = region.clamp();
+      final x = (clamped.left * source.width)
+          .floor()
+          .clamp(0, source.width - 1);
+      final y = (clamped.top * source.height)
+          .floor()
+          .clamp(0, source.height - 1);
+      final right = (clamped.right * source.width)
+          .ceil()
+          .clamp(x + 1, source.width);
+      final bottom = (clamped.bottom * source.height)
+          .ceil()
+          .clamp(y + 1, source.height);
+
+      final crop = img.copyCrop(
+        source,
+        x: x,
+        y: y,
+        width: right - x,
+        height: bottom - y,
+      );
+      final png = Uint8List.fromList(img.encodePng(crop));
+      final safeKey = partKey
+          .trim()
+          .replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+      final path =
+          '${userId.trim()}/${projectId.trim()}/parts/$safeKey.png';
+
+      await _storage.upload(
+        path: path,
+        bytes: png,
+        contentType: 'image/png',
+      );
+      return path;
+    } on AppFailure {
+      rethrow;
+    } catch (_) {
+      throw AppFailure.storage();
+    }
+  }
+
+  @override
   Future<String> copyGeneratedReference({
     required String userId,
     required String projectId,
