@@ -12,6 +12,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: android-mvp-media-3d-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify-build-release:
     runs-on: ubuntu-latest
