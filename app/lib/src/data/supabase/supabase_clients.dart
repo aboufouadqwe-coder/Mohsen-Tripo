@@ -116,12 +116,14 @@ final class SupabaseFunctionInvoker implements FunctionInvoker {
   @override
   Future<Map<String, Object?>> invoke(
     String functionName,
-    Map<String, Object?> body,
-  ) async {
+    Map<String, Object?> body, {
+    Map<String, String> headers = const {},
+  }) async {
     try {
       final response = await _client.functions.invoke(
         functionName,
         body: body,
+        headers: headers,
       );
 
       if (response.status < 200 || response.status >= 300) {
