@@ -41,9 +41,172 @@ type GenerateModelDeps = {
     jobId: string,
   ) => Promise<OwnedGenerationJob | null>;
   signGeneratedImageUrl: (path: string) => Promise<string>;
-  createImageToModel: (input: { input: string }) => Promise<string>;
+  createImageToModel: (input: {
+    input: string;
+    model: string;
+    faceLimit?: number;
+    quad?: boolean;
+    geometryQuality?: "standard" | "detailed";
+    texture: boolean;
+    pbr: boolean;
+    enableImageAutofix: boolean;
+  }) => Promise<string>;
   insertJob: (input: Record<string, unknown>) => Promise<string>;
 };
+
+
+type QualityPreset = "low_poly" | "standard" | "high";
+type Topology = "adaptive" | "triangles" | "quads";
+
+type ModelProviderSettings = {
+  model: string;
+  faceLimit?: number;
+  quad?: boolean;
+  geometryQuality?: "standard" | "detailed";
+  texture: boolean;
+  pbr: boolean;
+  enableImageAutofix: boolean;
+};
+
+function optionalBoolean(
+  body: Record<string, unknown>,
+  key: string,
+  fallback: boolean,
+): boolean {
+  const value = body[key];
+  if (value === undefined || value === null) return fallback;
+  if (typeof value !== "boolean") {
+    throw new HttpError(400, "invalid_body", key + " must be a boolean.");
+  }
+  return value;
+}
+
+function optionalInteger(
+  body: Record<string, unknown>,
+  key: string,
+): number | undefined {
+  const value = body[key];
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    throw new HttpError(400, "invalid_body", key + " must be an integer.");
+  }
+  return value;
+}
+
+function optionalEnum<T extends string>(
+  body: Record<string, unknown>,
+  key: string,
+  allowed: readonly T[],
+  fallback: T,
+): T {
+  const value = body[key];
+  if (value === undefined || value === null) return fallback;
+  if (typeof value !== "string" || !allowed.includes(value as T)) {
+    throw new HttpError(400, "invalid_body", key + " has an unsupported value.");
+  }
+  return value as T;
+}
+
+function defaultFaceLimit(
+  preset: QualityPreset,
+  topology: Topology,
+): number | undefined {
+  if (topology === "adaptive") return undefined;
+  if (topology === "quads") {
+    return preset === "low_poly" ? 10000 : 50000;
+  }
+  if (preset === "low_poly") return 10000;
+  if (preset === "standard") return 100000;
+  return 500000;
+}
+
+function providerSettingsFromBody(
+  body: Record<string, unknown>,
+): {
+  preset: QualityPreset;
+  topology: Topology;
+  provider: ModelProviderSettings;
+} {
+  const preset = optionalEnum<QualityPreset>(
+    body,
+    "quality_preset",
+    ["low_poly", "standard", "high"],
+    "high",
+  );
+  const topology = optionalEnum<Topology>(
+    body,
+    "topology",
+    ["adaptive", "triangles", "quads"],
+    "adaptive",
+  );
+  const texture = optionalBoolean(body, "texture", true);
+  const requestedPbr = optionalBoolean(body, "pbr", true);
+  const enableImageAutofix = optionalBoolean(
+    body,
+    "enable_image_autofix",
+    false,
+  );
+  let faceLimit = optionalInteger(body, "face_limit");
+  if (topology === "adaptive") {
+    faceLimit = undefined;
+  } else if (faceLimit === undefined) {
+    faceLimit = defaultFaceLimit(preset, topology);
+  }
+
+  let model: string;
+  let geometryQuality: "standard" | "detailed" | undefined;
+  let quad: boolean | undefined;
+  let minFaces = 48;
+  let maxFaces: number;
+
+  if (preset === "low_poly") {
+    if (topology === "quads") {
+      model = "P2-20260801";
+      quad = true;
+      maxFaces = 25000;
+    } else {
+      model = "P1-20260311";
+      quad = false;
+      minFaces = 50;
+      maxFaces = 20000;
+    }
+  } else if (preset === "standard") {
+    model = "v3.0-20250812";
+    geometryQuality = "standard";
+    quad = topology === "quads";
+    maxFaces = quad ? 150000 : 1000000;
+  } else {
+    model = "v3.1-20260211";
+    geometryQuality = "detailed";
+    quad = topology === "quads";
+    maxFaces = quad ? 150000 : 2000000;
+  }
+
+  if (
+    faceLimit !== undefined &&
+    (faceLimit < minFaces || faceLimit > maxFaces)
+  ) {
+    throw new HttpError(
+      400,
+      "invalid_face_limit",
+      "face_limit is outside the supported range for the selected 3D settings.",
+    );
+  }
+
+  return {
+    preset,
+    topology,
+    provider: {
+      model,
+      faceLimit,
+      quad,
+      geometryQuality,
+      texture,
+      pbr: texture && requestedPbr,
+      enableImageAutofix,
+    },
+  };
+}
 
 export function createGenerateModelHandler(
   deps: GenerateModelDeps,
@@ -73,7 +236,11 @@ export function createGenerateModelHandler(
         ? sourceJob.providerTaskId
         : await deps.signGeneratedImageUrl(asset.storagePath);
 
-      const providerTaskId = await deps.createImageToModel({ input: providerInput });
+      const settings = providerSettingsFromBody(body);
+      const providerTaskId = await deps.createImageToModel({
+        input: providerInput,
+        ...settings.provider,
+      });
       const jobId = await deps.insertJob({
         project_id: asset.projectId,
         part_key: asset.partKey,
@@ -86,6 +253,15 @@ export function createGenerateModelHandler(
           source_asset_result_id: asset.id,
           source_provider_task_reused: sourceJob.provider === "tripo" &&
             Boolean(sourceJob.providerTaskId),
+          quality_preset: settings.preset,
+          topology: settings.topology,
+          face_limit: settings.provider.faceLimit ?? null,
+          model: settings.provider.model,
+          quad: settings.provider.quad ?? false,
+          geometry_quality: settings.provider.geometryQuality ?? null,
+          texture: settings.provider.texture,
+          pbr: settings.provider.pbr,
+          enable_image_autofix: settings.provider.enableImageAutofix,
         },
       });
 
