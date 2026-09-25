@@ -83,6 +83,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('تحويل إلى 3D'), findsOneWidget);
+    expect(find.text('تنزيل الصورة'), findsNothing);
 
     await tester.tap(find.text('تحويل إلى 3D'));
     await tester.pump();
@@ -158,3 +159,45 @@ void main() {
     expect(find.byKey(const ValueKey('result-job-old')), findsOneWidget);
   });
 }
+
+
+testWidgets('persisted image exposes explicit download action',
+    (tester) async {
+  final asset = imageAsset('asset-download', 'job-download');
+  final repository = FakeResultsRepository([
+    ResultHistoryEntry(
+      job: imageJob(id: 'job-download', status: GenerationStatus.success),
+      assets: [asset],
+      signedUrlsByAssetId: const {
+        'asset-download': 'https://signed.test/download.png',
+      },
+      createdAt: DateTime.utc(2026, 9, 25, 13),
+    ),
+  ]);
+  String? downloadedAssetId;
+  String? downloadedUrl;
+
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        body: ResultsGallery(
+          projectId: 'project-1',
+          repository: repository,
+          onDownloadImage: (selected, url) async {
+            downloadedAssetId = selected.id;
+            downloadedUrl = url;
+          },
+          imagePreviewBuilder: (context, url) => Text('preview:$url'),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+
+  expect(find.text('تنزيل الصورة'), findsOneWidget);
+  await tester.tap(find.text('تنزيل الصورة'));
+  await tester.pump();
+
+  expect(downloadedAssetId, 'asset-download');
+  expect(downloadedUrl, 'https://signed.test/download.png');
+});
