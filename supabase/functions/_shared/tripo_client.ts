@@ -81,10 +81,10 @@ export class TripoClient {
   async createImageToModel(request: TripoCreateImageToModelRequest): Promise<string> {
     const body: Record<string, unknown> = {
       input: request.input,
-      model: request.model || MODEL_3D,
-      texture: request.texture,
-      pbr: request.pbr,
-      enable_image_autofix: request.enableImageAutofix,
+      model: request.model ?? MODEL_3D,
+      texture: request.texture ?? true,
+      pbr: request.pbr ?? true,
+      enable_image_autofix: request.enableImageAutofix ?? false,
     };
 
     if (request.faceLimit !== undefined) {
