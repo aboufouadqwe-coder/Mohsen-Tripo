@@ -110,9 +110,6 @@ final class _WorkspacePageState extends State<WorkspacePage> {
         .length;
     if (terminalCount > _lastBatchTerminalCount) {
       _resultsVersion += 1;
-      if (tripoAccountController != null) {
-        unawaited(tripoAccountController.load());
-      }
       unawaited(_refreshCreditBalance());
     }
     _lastBatchTerminalCount = terminalCount;
@@ -200,7 +197,8 @@ final class _WorkspacePageState extends State<WorkspacePage> {
                   validationGateway is TripoCredentialValidationGateway
               ? TripoAccountController(
                   repository: credentialRepository,
-                  validator: validationGateway,
+                  validator:
+                      validationGateway as TripoCredentialValidationGateway,
                   readClipboardText: TripoAccountCard.readClipboardText,
                   openConsole: TripoAccountCard.openConsoleInChrome,
                 )
