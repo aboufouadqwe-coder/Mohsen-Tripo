@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 
+import '../../data/local/tripo_credential_repository.dart';
 import '../../data/supabase/generation_gateway.dart';
 import '../../data/supabase/project_repository.dart';
 import '../../data/supabase/reference_image_repository.dart';
@@ -17,6 +18,7 @@ final class AppRouterDependencies {
     required this.referenceImageRepository,
     required this.resultsRepository,
     required this.generationGateway,
+    required this.tripoCredentialRepository,
     required this.currentUserId,
   });
 
@@ -25,6 +27,7 @@ final class AppRouterDependencies {
   final ReferenceImageRepository referenceImageRepository;
   final ResultsRepository resultsRepository;
   final GenerationGateway generationGateway;
+  final TripoCredentialRepository tripoCredentialRepository;
   final String Function() currentUserId;
 }
 
@@ -60,6 +63,7 @@ GoRouter buildAppRouter(AppRouterDependencies dependencies) {
           referenceImageRepository: dependencies.referenceImageRepository,
           resultsRepository: dependencies.resultsRepository,
           generationGateway: dependencies.generationGateway,
+          tripoCredentialRepository: dependencies.tripoCredentialRepository,
           currentUserId: dependencies.currentUserId,
         ),
       ),
