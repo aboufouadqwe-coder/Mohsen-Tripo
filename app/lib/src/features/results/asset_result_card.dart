@@ -84,20 +84,7 @@ final class AssetResultCard extends StatelessWidget {
   }
 
   Widget _defaultModelPreview(BuildContext context, String url) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: SizedBox(
-        height: 360,
-        child: ModelViewer(
-          src: url,
-          alt: 'نموذج 3D مولد',
-          ar: false,
-          autoRotate: true,
-          cameraControls: true,
-          backgroundColor: Theme.of(context).colorScheme.surface,
-        ),
-      ),
-    );
+    return _LazyModelPreview(url: url);
   }
 
   @override
@@ -220,6 +207,63 @@ final class AssetResultCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+
+final class _LazyModelPreview extends StatefulWidget {
+  const _LazyModelPreview({
+    required this.url,
+  });
+
+  final String url;
+
+  @override
+  State<_LazyModelPreview> createState() => _LazyModelPreviewState();
+}
+
+final class _LazyModelPreviewState extends State<_LazyModelPreview> {
+  bool _visible = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_visible) {
+      return FilledButton.tonalIcon(
+        onPressed: () {
+          setState(() => _visible = true);
+        },
+        icon: const Icon(Icons.view_in_ar),
+        label: const Text('عرض المجسم'),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(
+            height: 360,
+            child: ModelViewer(
+              src: widget.url,
+              alt: 'نموذج 3D مولد',
+              ar: false,
+              autoRotate: false,
+              cameraControls: true,
+              backgroundColor: Theme.of(context).colorScheme.surface,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextButton.icon(
+          onPressed: () {
+            setState(() => _visible = false);
+          },
+          icon: const Icon(Icons.visibility_off_outlined),
+          label: const Text('إخفاء المجسم'),
+        ),
+      ],
     );
   }
 }
