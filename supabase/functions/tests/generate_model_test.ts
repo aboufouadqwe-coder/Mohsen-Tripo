@@ -5,7 +5,7 @@ import { createGenerateModelHandler } from "../generate-model/index.ts";
 const secret = "TRIPO_SUPER_SECRET";
 
 function request(body: unknown, authenticated = true): Request {
-  const headers = new Headers({ "content-type": "application/json" });
+  const headers = new Headers({ "content-type": "application/json" });\n  headers.set("x-tripo-api-key", "tsk_test_key_12345678901234567890");
   if (authenticated) headers.set("authorization", "Bearer user-token");
   return new Request("https://edge.test/generate-model", {
     method: "POST",
@@ -41,7 +41,7 @@ const baseDeps = {
         : null,
     ),
   signGeneratedImageUrl: (_path: string) => Promise.resolve("https://signed.test/head.png"),
-  createImageToModel: (_input: {
+  createImageToModel: (_apiKey: string, _input: {
     input: string;
     model: string;
     faceLimit?: number;
@@ -92,7 +92,7 @@ Deno.test("generate-model prefers prior Tripo image task id", async () => {
   let providerInput = "";
   const handler = createGenerateModelHandler({
     ...baseDeps,
-    createImageToModel: (input) => {
+    createImageToModel: (_apiKey: string, input) => {
       providerInput = input.input;
       return Promise.resolve("task-model-1");
     },
@@ -113,7 +113,7 @@ Deno.test("generate-model maps low-poly quad settings to P2", async () => {
 
   const handler = createGenerateModelHandler({
     ...baseDeps,
-    createImageToModel: (input) => {
+    createImageToModel: (_apiKey: string, input) => {
       providerRequest = input;
       return Promise.resolve("task-model-quad");
     },
