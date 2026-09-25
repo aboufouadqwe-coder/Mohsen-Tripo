@@ -79,12 +79,25 @@ export class TripoClient {
   }
 
   async createImageToModel(request: TripoCreateImageToModelRequest): Promise<string> {
-    return await this.#createTask("/generation/image-to-model", {
+    const body: Record<string, unknown> = {
       input: request.input,
-      model: MODEL_3D,
-      texture: true,
-      pbr: true,
-    });
+      model: request.model || MODEL_3D,
+      texture: request.texture,
+      pbr: request.pbr,
+      enable_image_autofix: request.enableImageAutofix,
+    };
+
+    if (request.faceLimit !== undefined) {
+      body.face_limit = request.faceLimit;
+    }
+    if (request.quad !== undefined) {
+      body.quad = request.quad;
+    }
+    if (request.geometryQuality !== undefined) {
+      body.geometry_quality = request.geometryQuality;
+    }
+
+    return await this.#createTask("/generation/image-to-model", body);
   }
 
   async getTask(taskId: string): Promise<TripoTask> {
