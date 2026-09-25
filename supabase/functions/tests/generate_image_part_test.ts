@@ -5,7 +5,7 @@ import { createGenerateImagePartHandler } from "../generate-image-part/index.ts"
 const secret = "TRIPO_SUPER_SECRET";
 
 function request(body: unknown, authenticated = true): Request {
-  const headers = new Headers({ "content-type": "application/json" });
+  const headers = new Headers({ "content-type": "application/json" });\n  headers.set("x-tripo-api-key", "tsk_test_key_12345678901234567890");
   if (authenticated) headers.set("authorization", "Bearer user-token");
   return new Request("https://edge.test/generate-image-part", {
     method: "POST",
@@ -38,8 +38,8 @@ const baseDeps = {
         : null,
     ),
   signReferenceUrl: (_path: string) => Promise.resolve("https://signed.test/reference.png"),
-  uploadReferenceToProvider: (_url: string) => Promise.resolve("file_reference_1"),
-  createImageToImage: (_input: { input: string; prompt: string }) => Promise.resolve("task-part-1"),
+  uploadReferenceToProvider: (_apiKey: string, _url: string) => Promise.resolve("file_reference_1"),
+  createImageToImage: (_apiKey: string, _input: { input: string; prompt: string }) => Promise.resolve("task-part-1"),
   insertJob: (_input: unknown) => Promise.resolve("job-part-1"),
 };
 
@@ -83,11 +83,11 @@ Deno.test("generate-image-part uploads private reference and creates job", async
   let submittedPrompt = "";
   const handler = createGenerateImagePartHandler({
     ...baseDeps,
-    uploadReferenceToProvider: (url: string) => {
+    uploadReferenceToProvider: (_apiKey: string, url: string) => {
       uploadedUrl = url;
       return Promise.resolve("file_reference_1");
     },
-    createImageToImage: (input: { input: string; prompt: string }) => {
+    createImageToImage: (_apiKey: string, input: { input: string; prompt: string }) => {
       providerInput = input.input;
       submittedPrompt = input.prompt;
       return Promise.resolve("task-part-1");
@@ -119,7 +119,7 @@ Deno.test("generate-image-part accepts exact client-authored prompt for custom p
       lookupCalled = true;
       return Promise.resolve(null);
     },
-    createImageToImage: (input: { input: string; prompt: string }) => {
+    createImageToImage: (_apiKey: string, input: { input: string; prompt: string }) => {
       submittedPrompt = input.prompt;
       return Promise.resolve("task-custom-1");
     },
