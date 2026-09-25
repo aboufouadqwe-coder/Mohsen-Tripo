@@ -24,6 +24,20 @@ abstract interface class GenerationGateway {
   });
 }
 
+final class TripoCreditBalance {
+  const TripoCreditBalance({
+    required this.available,
+    required this.frozen,
+  });
+
+  final double available;
+  final double frozen;
+}
+
+abstract interface class CreditBalanceGateway {
+  Future<TripoCreditBalance> getCreditBalance();
+}
+
 abstract interface class ActiveGenerationJobsGateway {
   Future<List<GenerationJob>> listActiveJobs(String projectId);
 }
@@ -40,7 +54,7 @@ abstract interface class FunctionInvoker {
 }
 
 final class DefaultGenerationGateway
-    implements GenerationGateway, ActiveGenerationJobsGateway {
+    implements GenerationGateway, ActiveGenerationJobsGateway, CreditBalanceGateway {
   const DefaultGenerationGateway(
     this._invoker, {
     this.jobDataSource,
@@ -108,6 +122,29 @@ final class DefaultGenerationGateway
         {'job_id': jobId},
       );
       return _jobFromFunctionResponse(response);
+    } on AppFailure {
+      rethrow;
+    } catch (_) {
+      throw AppFailure.function();
+    }
+  }
+
+  @override
+  Future<TripoCreditBalance> getCreditBalance() async {
+    try {
+      final response = await _invoker.invoke(
+        'tripo-balance',
+        const {},
+      );
+      final balance = response['balance'];
+      final frozen = response['frozen'];
+      if (balance is! num || frozen is! num) {
+        throw AppFailure.function();
+      }
+      return TripoCreditBalance(
+        available: balance.toDouble(),
+        frozen: frozen.toDouble(),
+      );
     } on AppFailure {
       rethrow;
     } catch (_) {
