@@ -125,31 +125,31 @@ void main() {
     expect(controller.isBusy, isFalse);
     expect(controller.job?.status, GenerationStatus.success);
   });
+
+  test('active 3d job can be resumed without creating a second provider task',
+      () async {
+    final gateway = FakeModelGateway();
+    final controller = ModelGenerationController(
+      gateway: gateway,
+      pollUntilTerminal: (jobId) async => completedModelJob(jobId),
+    );
+
+    await controller.resumeJob(
+      const GenerationJob(
+        id: 'existing-model-job',
+        projectId: 'project-1',
+        provider: 'tripo',
+        operation: GenerationOperation.imageToModel,
+        status: GenerationStatus.running,
+        partKey: 'head',
+        progress: 0.56,
+      ),
+    );
+
+    expect(gateway.modelCalls, 0);
+    expect(controller.isBusy, isFalse);
+    expect(controller.job?.id, 'existing-model-job');
+    expect(controller.job?.status, GenerationStatus.success);
+  });
+
 }
-
-
-test('active 3d job can be resumed without creating a second provider task',
-    () async {
-  final gateway = FakeModelGateway();
-  final controller = ModelGenerationController(
-    gateway: gateway,
-    pollUntilTerminal: (jobId) async => completedModelJob(jobId),
-  );
-
-  await controller.resumeJob(
-    const GenerationJob(
-      id: 'existing-model-job',
-      projectId: 'project-1',
-      provider: 'tripo',
-      operation: GenerationOperation.imageToModel,
-      status: GenerationStatus.running,
-      partKey: 'head',
-      progress: 0.56,
-    ),
-  );
-
-  expect(gateway.modelCalls, 0);
-  expect(controller.isBusy, isFalse);
-  expect(controller.job?.id, 'existing-model-job');
-  expect(controller.job?.status, GenerationStatus.success);
-});
