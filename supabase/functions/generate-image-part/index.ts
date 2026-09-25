@@ -15,6 +15,7 @@ import {
   createSignedObjectUrl,
 } from "../_shared/supabase_user.ts";
 import { TripoClient } from "../_shared/tripo_client.ts";
+import { resolveTripoCredential } from "../_shared/tripo_credential.ts";
 
 type OwnedProject = {
   id: string;
@@ -38,8 +39,14 @@ type GenerateImagePartDeps = {
     userId?: string,
   ) => Promise<TemplatePart | null>;
   signReferenceUrl: (path: string) => Promise<string>;
-  uploadReferenceToProvider: (signedUrl: string) => Promise<string>;
-  createImageToImage: (input: { input: string; prompt: string }) => Promise<string>;
+  uploadReferenceToProvider: (
+    apiKey: string,
+    signedUrl: string,
+  ) => Promise<string>;
+  createImageToImage: (
+    apiKey: string,
+    input: { input: string; prompt: string },
+  ) => Promise<string>;
   insertJob: (input: Record<string, unknown>) => Promise<string>;
 };
 
@@ -50,6 +57,7 @@ export function createGenerateImagePartHandler(
     executeHttp(async () => {
       const token = requireBearerToken(request);
       const userId = await deps.authenticate(token);
+      const credential = await resolveTripoCredential(request);
       const body = await readJsonObject(request);
       const projectId = requiredString(body, "project_id");
       const partKey = requiredString(body, "part_key");
@@ -138,11 +146,17 @@ export function createGenerateImagePartHandler(
       }
 
       const referenceUrl = await deps.signReferenceUrl(referencePath);
-      const providerInput = await deps.uploadReferenceToProvider(referenceUrl);
-      const providerTaskId = await deps.createImageToImage({
-        input: providerInput,
-        prompt,
-      });
+      const providerInput = await deps.uploadReferenceToProvider(
+        credential.apiKey,
+        referenceUrl,
+      );
+      const providerTaskId = await deps.createImageToImage(
+        credential.apiKey,
+        {
+          input: providerInput,
+          prompt,
+        },
+      );
 
       const jobId = await deps.insertJob({
         project_id: project.id,
@@ -152,6 +166,7 @@ export function createGenerateImagePartHandler(
         provider_task_id: providerTaskId,
         status: "queued",
         progress: 0,
+        provider_credential_fingerprint: credential.fingerprint,
         request_payload_redacted: {
           part_key: part.key,
           custom_instructions_present: customInstructions !== undefined,
@@ -185,8 +200,6 @@ type PartRow = {
 };
 
 function createDefaultDeps(): GenerateImagePartDeps {
-  const tripo = new TripoClient();
-
   return {
     authenticate: authenticateSupabaseToken,
     findOwnedProject: async (userId, projectId) => {
@@ -229,8 +242,10 @@ function createDefaultDeps(): GenerateImagePartDeps {
       };
     },
     signReferenceUrl: (path) => createSignedObjectUrl("reference-images", path, 600),
-    uploadReferenceToProvider: (signedUrl) => tripo.uploadImageFromUrl(signedUrl),
-    createImageToImage: (input) => tripo.createImageToImage(input),
+    uploadReferenceToProvider: (apiKey, signedUrl) =>
+      new TripoClient({ apiKey }).uploadImageFromUrl(signedUrl),
+    createImageToImage: (apiKey, input) =>
+      new TripoClient({ apiKey }).createImageToImage(input),
     insertJob: async (input) => {
       const row = await adminInsertOne<{ id: string }>("generation_jobs", input, "id");
       return row.id;
