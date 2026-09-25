@@ -81,4 +81,40 @@ void main() {
       'mimeType': 'model/gltf-binary',
     });
   });
+
+  test('downloadModel preserves FBX extension for quad output', () async {
+    const channel = MethodChannel('com.mohsentripo.mohsen_tripo/media');
+    MethodCall? received;
+
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      received = call;
+      return 'content://downloads/model-quad.fbx';
+    });
+
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+    });
+
+    const downloader = GeneratedImageDownloader();
+
+    await downloader.downloadModel(
+      const AssetResult(
+        id: 'model-quad',
+        projectId: 'project-1',
+        generationJobId: 'model-job-quad',
+        storagePath: 'user/project/model-quad.fbx',
+        mimeType: 'application/octet-stream',
+      ),
+      'https://signed.test/model-quad.fbx',
+    );
+
+    expect(received?.arguments, {
+      'url': 'https://signed.test/model-quad.fbx',
+      'fileName': 'Mohsen-Tripo-model-quad.fbx',
+      'mimeType': 'application/octet-stream',
+    });
+  });
+
 }
