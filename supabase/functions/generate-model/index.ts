@@ -4,7 +4,7 @@ import {
   jsonResponse,
   readJsonObject,
   requireBearerToken,
-  requiredString,
+  optionalString,
 } from "../_shared/http.ts";
 import {
   adminInsertOne,
@@ -32,8 +32,14 @@ type OwnedGenerationJob = {
   providerCredentialFingerprint: string | null;
 };
 
+type OwnedProject = { id: string };
+
 type GenerateModelDeps = {
   authenticate: (token: string) => Promise<string>;
+  findOwnedProject: (
+    userId: string,
+    projectId: string,
+  ) => Promise<OwnedProject | null>;
   findOwnedAssetResult: (
     userId: string,
     assetResultId: string,
@@ -43,6 +49,11 @@ type GenerateModelDeps = {
     jobId: string,
   ) => Promise<OwnedGenerationJob | null>;
   signGeneratedImageUrl: (path: string) => Promise<string>;
+  signReferenceImageUrl: (path: string) => Promise<string>;
+  uploadImageToProvider: (
+    apiKey: string,
+    signedUrl: string,
+  ) => Promise<string>;
   createImageToModel: (apiKey: string, input: {
     input: string;
     model: string;
@@ -219,28 +230,107 @@ export function createGenerateModelHandler(
       const userId = await deps.authenticate(token);
       const credential = await resolveTripoCredential(request);
       const body = await readJsonObject(request);
-      const assetResultId = requiredString(body, "asset_result_id");
+      const assetResultId = optionalString(body, "asset_result_id")?.trim();
+      const directProjectId = optionalString(body, "project_id")?.trim();
+      const directReferencePath =
+        optionalString(body, "reference_storage_path")?.trim();
 
-      const asset = await deps.findOwnedAssetResult(userId, assetResultId);
-      if (asset === null) {
-        throw new HttpError(404, "not_found", "Asset result was not found.");
-      }
-      if (!asset.mimeType.toLowerCase().startsWith("image/")) {
-        throw new HttpError(400, "invalid_asset_type", "Only image results can generate a model.");
+      const hasAssetSource = Boolean(assetResultId);
+      const hasCompleteDirectSource =
+        Boolean(directProjectId) && Boolean(directReferencePath);
+      const hasPartialDirectSource =
+        Boolean(directProjectId) !== Boolean(directReferencePath);
+
+      if (
+        hasPartialDirectSource ||
+        hasAssetSource === hasCompleteDirectSource
+      ) {
+        throw new HttpError(
+          400,
+          "invalid_model_source",
+          "Provide exactly one model source: asset_result_id or project_id with reference_storage_path.",
+        );
       }
 
-      const sourceJob = await deps.findOwnedGenerationJob(userId, asset.generationJobId);
-      if (sourceJob === null) {
-        throw new HttpError(404, "not_found", "Source generation job was not found.");
-      }
+      let projectId: string;
+      let partKey: string | null = null;
+      let providerInput: string;
+      let sourceAssetResultId: string | null = null;
+      let canReuseProviderTask = false;
 
-      const canReuseProviderTask = sourceJob.provider === "tripo" &&
-        Boolean(sourceJob.providerTaskId?.trim().length) &&
-        (sourceJob.providerCredentialFingerprint === null ||
-          sourceJob.providerCredentialFingerprint === credential.fingerprint);
-      const providerInput = canReuseProviderTask
-        ? sourceJob.providerTaskId!
-        : await deps.signGeneratedImageUrl(asset.storagePath);
+      if (hasAssetSource) {
+        const asset = await deps.findOwnedAssetResult(userId, assetResultId!);
+        if (asset === null) {
+          throw new HttpError(404, "not_found", "Asset result was not found.");
+        }
+        if (!asset.mimeType.toLowerCase().startsWith("image/")) {
+          throw new HttpError(
+            400,
+            "invalid_asset_type",
+            "Only image results can generate a model.",
+          );
+        }
+
+        const sourceJob = await deps.findOwnedGenerationJob(
+          userId,
+          asset.generationJobId,
+        );
+        if (sourceJob === null) {
+          throw new HttpError(
+            404,
+            "not_found",
+            "Source generation job was not found.",
+          );
+        }
+
+        canReuseProviderTask = sourceJob.provider === "tripo" &&
+          Boolean(sourceJob.providerTaskId?.trim().length) &&
+          (sourceJob.providerCredentialFingerprint === null ||
+            sourceJob.providerCredentialFingerprint === credential.fingerprint);
+
+        if (canReuseProviderTask) {
+          providerInput = sourceJob.providerTaskId!;
+        } else {
+          const signedUrl = await deps.signGeneratedImageUrl(asset.storagePath);
+          providerInput = await deps.uploadImageToProvider(
+            credential.apiKey,
+            signedUrl,
+          );
+        }
+        projectId = asset.projectId;
+        partKey = asset.partKey;
+        sourceAssetResultId = asset.id;
+      } else {
+        const directProject = await deps.findOwnedProject(
+          userId,
+          directProjectId!,
+        );
+        if (directProject === null) {
+          throw new HttpError(404, "not_found", "Project was not found.");
+        }
+
+        const requiredPrefix =
+          userId + "/" + directProject.id + "/model-inputs/";
+        if (
+          directReferencePath!.includes("..") ||
+          !directReferencePath.startsWith(requiredPrefix)
+        ) {
+          throw new HttpError(
+            400,
+            "invalid_reference",
+            "Direct model input is outside the owned project model-inputs area.",
+          );
+        }
+
+        const signedUrl = await deps.signReferenceImageUrl(
+          directReferencePath,
+        );
+        providerInput = await deps.uploadImageToProvider(
+          credential.apiKey,
+          signedUrl,
+        );
+        projectId = directProject.id;
+      }
 
       const settings = providerSettingsFromBody(body);
       const providerTaskId = await deps.createImageToModel(
@@ -251,8 +341,8 @@ export function createGenerateModelHandler(
         },
       );
       const jobId = await deps.insertJob({
-        project_id: asset.projectId,
-        part_key: asset.partKey,
+        project_id: projectId,
+        part_key: partKey,
         provider: "tripo",
         operation: "image_to_model",
         provider_task_id: providerTaskId,
@@ -260,7 +350,8 @@ export function createGenerateModelHandler(
         progress: 0,
         provider_credential_fingerprint: credential.fingerprint,
         request_payload_redacted: {
-          source_asset_result_id: asset.id,
+          source_asset_result_id: sourceAssetResultId,
+          direct_reference_used: hasCompleteDirectSource,
           source_provider_task_reused: canReuseProviderTask,
           quality_preset: settings.preset,
           topology: settings.topology,
@@ -309,6 +400,13 @@ async function ownsProject(userId: string, projectId: string): Promise<boolean> 
 function createDefaultDeps(): GenerateModelDeps {
   return {
     authenticate: authenticateSupabaseToken,
+    findOwnedProject: (userId, projectId) =>
+      adminSelectOne<OwnedProject>("projects", {
+        select: "id",
+        id: `eq.${projectId}`,
+        owner_id: `eq.${userId}`,
+        limit: "1",
+      }),
     findOwnedAssetResult: async (userId, assetResultId) => {
       const row = await adminSelectOne<AssetRow>("asset_results", {
         select: "id,project_id,generation_job_id,part_key,storage_path,mime_type",
@@ -343,7 +441,12 @@ function createDefaultDeps(): GenerateModelDeps {
         providerCredentialFingerprint: row.provider_credential_fingerprint,
       };
     },
-    signGeneratedImageUrl: (path) => createSignedObjectUrl("generated-images", path),
+    signGeneratedImageUrl: (path) =>
+      createSignedObjectUrl("generated-images", path),
+    signReferenceImageUrl: (path) =>
+      createSignedObjectUrl("reference-images", path),
+    uploadImageToProvider: (apiKey, signedUrl) =>
+      new TripoClient({ apiKey }).uploadImageFromUrl(signedUrl),
     createImageToModel: (apiKey, input) =>
       new TripoClient({ apiKey }).createImageToModel(input),
     insertJob: async (input) => {
