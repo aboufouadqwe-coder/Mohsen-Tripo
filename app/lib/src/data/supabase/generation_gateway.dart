@@ -1,5 +1,6 @@
 import '../../core/errors/app_failure.dart';
 import '../../domain/generation/generation_job.dart';
+import '../../domain/generation/model_generation_settings.dart';
 
 abstract interface class GenerationGateway {
   Future<String> generateSourceImage({
@@ -17,7 +18,10 @@ abstract interface class GenerationGateway {
 
   Future<GenerationJob> refreshJob(String jobId);
 
-  Future<String> generateModel(String assetResultId);
+  Future<String> generateModel(
+    String assetResultId, {
+    ModelGenerationSettings settings = const ModelGenerationSettings(),
+  });
 }
 
 abstract interface class ActiveGenerationJobsGateway {
@@ -83,10 +87,16 @@ final class DefaultGenerationGateway
   }
 
   @override
-  Future<String> generateModel(String assetResultId) {
+  Future<String> generateModel(
+    String assetResultId, {
+    ModelGenerationSettings settings = const ModelGenerationSettings(),
+  }) {
     return _invokeForJobId(
       'generate-model',
-      {'asset_result_id': assetResultId},
+      {
+        'asset_result_id': assetResultId,
+        ...settings.toFunctionBody(),
+      },
     );
   }
 
