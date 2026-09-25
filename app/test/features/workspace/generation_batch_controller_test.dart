@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mohsen_tripo/src/data/supabase/generation_gateway.dart';
 import 'package:mohsen_tripo/src/domain/generation/generation_job.dart';
+import 'package:mohsen_tripo/src/domain/generation/model_generation_settings.dart';
 import 'package:mohsen_tripo/src/features/workspace/generation_batch_controller.dart';
 import 'package:mohsen_tripo/src/features/workspace/job_polling_service.dart';
 
@@ -72,7 +73,10 @@ final class FakeBatchGateway implements GenerationGateway {
   }
 
   @override
-  Future<String> generateModel(String assetResultId) {
+  Future<String> generateModel(
+    String assetResultId, {
+    ModelGenerationSettings settings = const ModelGenerationSettings(),
+  }) {
     throw UnimplementedError();
   }
 }
