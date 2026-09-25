@@ -12,13 +12,14 @@ import {
   authenticateSupabaseToken,
 } from "../_shared/supabase_user.ts";
 import { TripoClient } from "../_shared/tripo_client.ts";
+import { resolveTripoCredential } from "../_shared/tripo_credential.ts";
 
 type OwnedProject = { id: string };
 
 type GenerateSourceImageDeps = {
   authenticate: (token: string) => Promise<string>;
   findOwnedProject: (userId: string, projectId: string) => Promise<OwnedProject | null>;
-  createTextToImage: (prompt: string) => Promise<string>;
+  createTextToImage: (apiKey: string, prompt: string) => Promise<string>;
   insertJob: (input: Record<string, unknown>) => Promise<string>;
 };
 
@@ -34,6 +35,7 @@ export function createGenerateSourceImageHandler(
     executeHttp(async () => {
       const token = requireBearerToken(request);
       const userId = await deps.authenticate(token);
+      const credential = await resolveTripoCredential(request);
       const body = await readJsonObject(request);
       const projectId = requiredString(body, "project_id");
       const prompt = requiredString(body, "prompt");
@@ -47,7 +49,10 @@ export function createGenerateSourceImageHandler(
         throw new HttpError(404, "not_found", "Project was not found.");
       }
 
-      const providerTaskId = await deps.createTextToImage(prompt);
+      const providerTaskId = await deps.createTextToImage(
+        credential.apiKey,
+        prompt,
+      );
       const jobId = await deps.insertJob({
         project_id: project.id,
         part_key: null,
@@ -56,6 +61,7 @@ export function createGenerateSourceImageHandler(
         provider_task_id: providerTaskId,
         status: "queued",
         progress: 0,
+        provider_credential_fingerprint: credential.fingerprint,
         request_payload_redacted: {
           prompt_words: countWords(prompt),
           prompt_characters: Array.from(prompt).length,
@@ -67,8 +73,6 @@ export function createGenerateSourceImageHandler(
 }
 
 function createDefaultDeps(): GenerateSourceImageDeps {
-  const tripo = new TripoClient();
-
   return {
     authenticate: authenticateSupabaseToken,
     findOwnedProject: (userId, projectId) =>
@@ -78,7 +82,8 @@ function createDefaultDeps(): GenerateSourceImageDeps {
         owner_id: `eq.${userId}`,
         limit: "1",
       }),
-    createTextToImage: (prompt) => tripo.createTextToImage({ prompt }),
+    createTextToImage: (apiKey, prompt) =>
+      new TripoClient({ apiKey }).createTextToImage({ prompt }),
     insertJob: async (input) => {
       const row = await adminInsertOne<{ id: string }>("generation_jobs", input, "id");
       return row.id;
