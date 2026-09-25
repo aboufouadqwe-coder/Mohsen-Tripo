@@ -1,6 +1,9 @@
 name: CI
 
 on:
+  push:
+    branches:
+      - feature/android-mvp
   workflow_dispatch:
     inputs:
       build_release:
@@ -45,13 +48,13 @@ jobs:
             exit 1
           fi
       - name: Build release APK against hosted free Supabase
-        if: inputs.build_release
+        if: github.event_name == 'push' || inputs.build_release
         run: |
           flutter build apk --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
       - name: Verify release APK excludes backend secret marker
-        if: inputs.build_release
+        if: github.event_name == 'push' || inputs.build_release
         shell: bash
         run: |
           set -euo pipefail
@@ -62,7 +65,7 @@ jobs:
             exit 1
           fi
       - name: Upload release APK
-        if: inputs.build_release
+        if: github.event_name == 'push' || inputs.build_release
         uses: actions/upload-artifact@v4
         with:
           name: mohsen-tripo-android-release
