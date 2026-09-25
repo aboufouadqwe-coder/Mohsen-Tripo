@@ -200,6 +200,8 @@ final class DefaultGenerationGateway
       mimeType: response['mime_type'],
       errorCode: response['error_code'],
       errorMessage: response['error_message'],
+      createdAt: response['created_at'],
+      completedAt: response['completed_at'],
     );
   }
 
@@ -215,6 +217,8 @@ final class DefaultGenerationGateway
       providerTaskId: row['provider_task_id'],
       errorCode: row['error_code'],
       errorMessage: row['error_message'],
+      createdAt: row['created_at'],
+      completedAt: row['completed_at'],
     );
   }
 
@@ -232,6 +236,8 @@ final class DefaultGenerationGateway
     Object? mimeType,
     Object? errorCode,
     Object? errorMessage,
+    Object? createdAt,
+    Object? completedAt,
   }) {
     if (id is! String ||
         projectId is! String ||
@@ -245,7 +251,9 @@ final class DefaultGenerationGateway
         (storagePath != null && storagePath is! String) ||
         (mimeType != null && mimeType is! String) ||
         (errorCode != null && errorCode is! String) ||
-        (errorMessage != null && errorMessage is! String)) {
+        (errorMessage != null && errorMessage is! String) ||
+        (createdAt != null && createdAt is! String) ||
+        (completedAt != null && completedAt is! String)) {
       throw AppFailure.function();
     }
 
@@ -275,6 +283,9 @@ final class DefaultGenerationGateway
       assetResultId: assetResultId as String?,
       storagePath: storagePath as String?,
       mimeType: mimeType as String?,
+      createdAt: createdAt is String ? DateTime.tryParse(createdAt) : null,
+      completedAt:
+          completedAt is String ? DateTime.tryParse(completedAt) : null,
     );
   }
 }
