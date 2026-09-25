@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/analytics/analytics.dart';
+import '../../data/local/tripo_credential_repository.dart';
 import '../../data/supabase/generation_gateway.dart';
 import '../../data/supabase/project_repository.dart';
 import '../../data/supabase/reference_image_repository.dart';
@@ -19,6 +20,8 @@ import '../results/generated_image_downloader.dart';
 import '../results/model_generation_controller.dart';
 import '../results/model_generation_settings_panel.dart';
 import '../results/results_gallery.dart';
+import '../tripo/tripo_account_card.dart';
+import '../tripo/tripo_account_controller.dart';
 import 'generation_batch_controller.dart';
 import 'job_polling_service.dart';
 import 'smart_part_planner_panel.dart';
@@ -38,6 +41,7 @@ final class WorkspacePage extends StatefulWidget {
     required this.resultsRepository,
     required this.generationGateway,
     required this.currentUserId,
+    this.tripoCredentialRepository,
   });
 
   final String projectId;
@@ -47,6 +51,7 @@ final class WorkspacePage extends StatefulWidget {
   final ResultsRepository resultsRepository;
   final GenerationGateway generationGateway;
   final String Function() currentUserId;
+  final TripoCredentialRepository? tripoCredentialRepository;
 
   @override
   State<WorkspacePage> createState() => _WorkspacePageState();
@@ -70,6 +75,7 @@ final class _WorkspacePageState extends State<WorkspacePage> {
       const ModelGenerationSettings();
   TripoCreditBalance? _creditBalance;
   bool _balanceLoading = false;
+  TripoAccountController? _tripoAccountController;
   final ReferenceAnalysisService _referenceAnalysisService =
       const MlKitReferenceAnalysisService();
   ReferenceAnalysis? _referenceAnalysis;
@@ -91,6 +97,7 @@ final class _WorkspacePageState extends State<WorkspacePage> {
       ?..removeListener(_onModelChanged)
       ..dispose();
     _modelPollingService?.dispose();
+    _tripoAccountController?.dispose();
     super.dispose();
   }
 
@@ -103,6 +110,9 @@ final class _WorkspacePageState extends State<WorkspacePage> {
         .length;
     if (terminalCount > _lastBatchTerminalCount) {
       _resultsVersion += 1;
+      if (tripoAccountController != null) {
+        unawaited(tripoAccountController.load());
+      }
       unawaited(_refreshCreditBalance());
     }
     _lastBatchTerminalCount = terminalCount;
@@ -183,6 +193,18 @@ final class _WorkspacePageState extends State<WorkspacePage> {
         pollUntilTerminalWithUpdates:
             modelPollingService.pollUntilTerminalWithUpdates,
       );
+      final credentialRepository = widget.tripoCredentialRepository;
+      final validationGateway = widget.generationGateway;
+      final tripoAccountController =
+          credentialRepository != null &&
+                  validationGateway is TripoCredentialValidationGateway
+              ? TripoAccountController(
+                  repository: credentialRepository,
+                  validator: validationGateway,
+                  readClipboardText: TripoAccountCard.readClipboardText,
+                  openConsole: TripoAccountCard.openConsoleInChrome,
+                )
+              : null;
 
       batchController.addListener(_onBatchChanged);
       modelController.addListener(_onModelChanged);
@@ -202,6 +224,7 @@ final class _WorkspacePageState extends State<WorkspacePage> {
         _batchController = batchController;
         _modelPollingService = modelPollingService;
         _modelController = modelController;
+        _tripoAccountController = tripoAccountController;
         _loading = false;
       });
 
@@ -613,32 +636,35 @@ final class _WorkspacePageState extends State<WorkspacePage> {
                   : project.identityPrompt,
             ),
             const SizedBox(height: 12),
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.bolt),
-                title: Text(
-                  _creditBalance == null
-                      ? 'رصيد Tripo'
-                      : 'الرصيد: ${_creditText(_creditBalance!.available)}',
+            if (_tripoAccountController != null)
+              TripoAccountCard(controller: _tripoAccountController!)
+            else
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.bolt),
+                  title: Text(
+                    _creditBalance == null
+                        ? 'رصيد Tripo'
+                        : 'الرصيد: ${_creditText(_creditBalance!.available)}',
+                  ),
+                  subtitle: _creditBalance == null
+                      ? const Text('اضغط تحديث لعرض الرصيد.')
+                      : Text(
+                          'محجوز للمهام الحالية: '
+                          '${_creditText(_creditBalance!.frozen)}',
+                        ),
+                  trailing: _balanceLoading
+                      ? const SizedBox.square(
+                          dimension: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : IconButton(
+                          tooltip: 'تحديث الرصيد',
+                          onPressed: _refreshCreditBalance,
+                          icon: const Icon(Icons.refresh),
+                        ),
                 ),
-                subtitle: _creditBalance == null
-                    ? const Text('اضغط تحديث لعرض الرصيد.')
-                    : Text(
-                        'محجوز للمهام الحالية: '
-                        '${_creditText(_creditBalance!.frozen)}',
-                      ),
-                trailing: _balanceLoading
-                    ? const SizedBox.square(
-                        dimension: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : IconButton(
-                        tooltip: 'تحديث الرصيد',
-                        onPressed: _refreshCreditBalance,
-                        icon: const Icon(Icons.refresh),
-                      ),
               ),
-            ),
             const SizedBox(height: 20),
             Text(
               'الصورة المرجعية',
