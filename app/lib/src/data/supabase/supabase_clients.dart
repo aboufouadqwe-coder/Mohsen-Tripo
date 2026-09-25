@@ -155,7 +155,7 @@ final class SupabaseGenerationJobDataSource implements GenerationJobDataSource {
         .from('generation_jobs')
         .select(
           'id,project_id,part_key,provider,operation,provider_task_id,'
-          'status,progress,error_code,error_message',
+          'status,progress,error_code,error_message,created_at,completed_at',
         )
         .eq('project_id', projectId)
         .inFilter('status', const ['queued', 'running'])
@@ -180,7 +180,7 @@ final class SupabaseResultsDataSource implements ResultsDataSource {
         .from('generation_jobs')
         .select(
           'id,project_id,part_key,provider,operation,provider_task_id,'
-          'status,progress,error_code,error_message,created_at,'
+          'status,progress,error_code,error_message,created_at,completed_at,'
           'asset_results(id,project_id,generation_job_id,part_key,'
           'storage_path,mime_type,width,height,created_at)',
         )
