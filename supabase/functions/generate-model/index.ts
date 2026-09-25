@@ -13,6 +13,7 @@ import {
   createSignedObjectUrl,
 } from "../_shared/supabase_user.ts";
 import { TripoClient } from "../_shared/tripo_client.ts";
+import { resolveTripoCredential } from "../_shared/tripo_credential.ts";
 
 type OwnedAssetResult = {
   id: string;
@@ -28,6 +29,7 @@ type OwnedGenerationJob = {
   provider: string;
   providerTaskId: string | null;
   operation: string;
+  providerCredentialFingerprint: string | null;
 };
 
 type GenerateModelDeps = {
@@ -41,7 +43,7 @@ type GenerateModelDeps = {
     jobId: string,
   ) => Promise<OwnedGenerationJob | null>;
   signGeneratedImageUrl: (path: string) => Promise<string>;
-  createImageToModel: (input: {
+  createImageToModel: (apiKey: string, input: {
     input: string;
     model: string;
     faceLimit?: number;
@@ -215,6 +217,7 @@ export function createGenerateModelHandler(
     executeHttp(async () => {
       const token = requireBearerToken(request);
       const userId = await deps.authenticate(token);
+      const credential = await resolveTripoCredential(request);
       const body = await readJsonObject(request);
       const assetResultId = requiredString(body, "asset_result_id");
 
@@ -231,16 +234,22 @@ export function createGenerateModelHandler(
         throw new HttpError(404, "not_found", "Source generation job was not found.");
       }
 
-      const providerInput = sourceJob.provider === "tripo" &&
-          sourceJob.providerTaskId?.trim().length
-        ? sourceJob.providerTaskId
+      const canReuseProviderTask = sourceJob.provider === "tripo" &&
+        Boolean(sourceJob.providerTaskId?.trim().length) &&
+        (sourceJob.providerCredentialFingerprint === null ||
+          sourceJob.providerCredentialFingerprint === credential.fingerprint);
+      const providerInput = canReuseProviderTask
+        ? sourceJob.providerTaskId!
         : await deps.signGeneratedImageUrl(asset.storagePath);
 
       const settings = providerSettingsFromBody(body);
-      const providerTaskId = await deps.createImageToModel({
-        input: providerInput,
-        ...settings.provider,
-      });
+      const providerTaskId = await deps.createImageToModel(
+        credential.apiKey,
+        {
+          input: providerInput,
+          ...settings.provider,
+        },
+      );
       const jobId = await deps.insertJob({
         project_id: asset.projectId,
         part_key: asset.partKey,
@@ -249,10 +258,10 @@ export function createGenerateModelHandler(
         provider_task_id: providerTaskId,
         status: "queued",
         progress: 0,
+        provider_credential_fingerprint: credential.fingerprint,
         request_payload_redacted: {
           source_asset_result_id: asset.id,
-          source_provider_task_reused: sourceJob.provider === "tripo" &&
-            Boolean(sourceJob.providerTaskId),
+          source_provider_task_reused: canReuseProviderTask,
           quality_preset: settings.preset,
           topology: settings.topology,
           face_limit: settings.provider.faceLimit ?? null,
@@ -284,6 +293,7 @@ type JobRow = {
   provider: string;
   provider_task_id: string | null;
   operation: string;
+  provider_credential_fingerprint: string | null;
 };
 
 async function ownsProject(userId: string, projectId: string): Promise<boolean> {
@@ -297,8 +307,6 @@ async function ownsProject(userId: string, projectId: string): Promise<boolean> 
 }
 
 function createDefaultDeps(): GenerateModelDeps {
-  const tripo = new TripoClient();
-
   return {
     authenticate: authenticateSupabaseToken,
     findOwnedAssetResult: async (userId, assetResultId) => {
@@ -320,7 +328,8 @@ function createDefaultDeps(): GenerateModelDeps {
     },
     findOwnedGenerationJob: async (userId, jobId) => {
       const row = await adminSelectOne<JobRow>("generation_jobs", {
-        select: "id,project_id,provider,provider_task_id,operation",
+        select:
+          "id,project_id,provider,provider_task_id,operation,provider_credential_fingerprint",
         id: `eq.${jobId}`,
         limit: "1",
       });
@@ -331,10 +340,12 @@ function createDefaultDeps(): GenerateModelDeps {
         provider: row.provider,
         providerTaskId: row.provider_task_id,
         operation: row.operation,
+        providerCredentialFingerprint: row.provider_credential_fingerprint,
       };
     },
     signGeneratedImageUrl: (path) => createSignedObjectUrl("generated-images", path),
-    createImageToModel: (input) => tripo.createImageToModel(input),
+    createImageToModel: (apiKey, input) =>
+      new TripoClient({ apiKey }).createImageToModel(input),
     insertJob: async (input) => {
       const row = await adminInsertOne<{ id: string }>("generation_jobs", input, "id");
       return row.id;
