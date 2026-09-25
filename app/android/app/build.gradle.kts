@@ -31,8 +31,15 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // Keep shrinking disabled for the Android hotfix build.
+            // The current app includes native ML Kit detectors; disabling R8 here
+            // avoids release-only class stripping while we validate the detectors
+            // across the user's Android device.
+            isMinifyEnabled = false
+            isShrinkResources = false
+
+            // TODO: Add your own unique release signing config before store upload.
+            // Debug signing is retained for sideload test builds.
             signingConfig = signingConfigs.getByName("debug")
         }
     }
