@@ -286,21 +286,24 @@ function normalizedMime(response: Response): string {
     .toLowerCase();
 }
 
-function outputTarget(
+export function providerOutputTarget(
   bucket: "generated-images" | "generated-models",
   mimeType: string,
-): { extension: string } {
+): { extension: string; mimeType: string } {
   if (bucket === "generated-models") {
-    if (
-      ![
-        "model/gltf-binary",
-        "application/octet-stream",
-        "application/x-binary",
-      ].includes(mimeType)
-    ) {
-      throw new Error("Provider model output MIME type is not allowed.");
-    }
-    return { extension: "glb" };
+    const normalized = mimeType.trim().toLowerCase();
+    const accepted = new Set([
+      "model/gltf-binary",
+      "application/octet-stream",
+      "application/x-binary",
+      "binary/octet-stream",
+    ]);
+    return {
+      extension: "glb",
+      mimeType: accepted.has(normalized)
+        ? normalized
+        : "model/gltf-binary",
+    };
   }
 
   const extensions: Record<string, string> = {
@@ -312,7 +315,16 @@ function outputTarget(
   if (!extension) {
     throw new Error("Provider image output MIME type is not allowed.");
   }
-  return { extension };
+  return { extension, mimeType };
+}
+
+function isGlb(bytes: ArrayBuffer): boolean {
+  if (bytes.byteLength < 4) return false;
+  const header = new Uint8Array(bytes, 0, 4);
+  return header[0] === 0x67 &&
+    header[1] === 0x6c &&
+    header[2] === 0x54 &&
+    header[3] === 0x46;
 }
 
 async function persistOutput(
@@ -325,59 +337,80 @@ async function persistOutput(
   let primary: PersistedOutput | null = null;
 
   for (const artifact of artifacts) {
-    const response = await fetch(artifact.url);
-    if (!response.ok) {
-      throw new Error(
-        "Provider output download failed with status " +
-          response.status +
-          ".",
+    try {
+      const response = await fetch(artifact.url);
+      if (!response.ok) {
+        throw new Error(
+          "Provider output download failed with status " +
+            response.status +
+            ".",
+        );
+      }
+
+      const responseMimeType = normalizedMime(response);
+      const bytes = await response.arrayBuffer();
+      if (bytes.byteLength === 0) {
+        throw new Error("Provider output was empty.");
+      }
+
+      const target = providerOutputTarget(
+        artifact.bucket,
+        responseMimeType,
       );
-    }
+      if (artifact.bucket === "generated-models" && !isGlb(bytes)) {
+        throw new Error("Provider model output was not a valid GLB file.");
+      }
 
-    const mimeType = normalizedMime(response);
-    const target = outputTarget(artifact.bucket, mimeType);
-    const bytes = await response.arrayBuffer();
-    if (bytes.byteLength === 0) {
-      throw new Error("Provider output was empty.");
-    }
+      const suffix = artifact.role === "preview" ? "-preview" : "";
+      const storagePath = input.userId +
+        "/" +
+        input.job.projectId +
+        "/" +
+        input.job.id +
+        suffix +
+        "." +
+        target.extension;
 
-    const suffix = artifact.role === "preview" ? "-preview" : "";
-    const storagePath = input.userId +
-      "/" +
-      input.job.projectId +
-      "/" +
-      input.job.id +
-      suffix +
-      "." +
-      target.extension;
-
-    await uploadObject(
-      artifact.bucket,
-      storagePath,
-      bytes,
-      mimeType,
-    );
-
-    const result = await adminInsertOne<{ id: string }>(
-      "asset_results",
-      {
-        project_id: input.job.projectId,
-        generation_job_id: input.job.id,
-        part_key: input.job.partKey,
-        storage_path: storagePath,
-        mime_type: mimeType,
-        width: null,
-        height: null,
-      },
-      "id",
-    );
-
-    if (artifact.role === "primary") {
-      primary = {
-        assetResultId: result.id,
+      await uploadObject(
+        artifact.bucket,
         storagePath,
-        mimeType,
-      };
+        bytes,
+        target.mimeType,
+      );
+
+      const result = await adminInsertOne<{ id: string }>(
+        "asset_results",
+        {
+          project_id: input.job.projectId,
+          generation_job_id: input.job.id,
+          part_key: input.job.partKey,
+          storage_path: storagePath,
+          mime_type: target.mimeType,
+          width: null,
+          height: null,
+        },
+        "id",
+      );
+
+      if (artifact.role === "primary") {
+        primary = {
+          assetResultId: result.id,
+          storagePath,
+          mimeType: target.mimeType,
+        };
+      }
+    } catch (error) {
+      if (artifact.role === "preview" && primary !== null) {
+        console.warn(
+          "Optional model preview persistence failed.",
+          {
+            operation: input.job.operation,
+            bucket: artifact.bucket,
+          },
+        );
+        continue;
+      }
+      throw error;
     }
   }
 
