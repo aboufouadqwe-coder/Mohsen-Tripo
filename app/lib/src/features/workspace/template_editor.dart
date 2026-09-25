@@ -119,8 +119,12 @@ final class TemplateEditorController extends ChangeNotifier {
     if (normalizedLabel.isEmpty) return false;
 
     final kind = PartKindClassifier.classify(normalizedLabel);
-    if (promptMode == PartPromptMode.smart && normalizedPrompt.isEmpty) {
-      normalizedPrompt = PartPromptProfiles.build(kind);
+    if (promptMode == PartPromptMode.smart) {
+      normalizedPrompt = PartPromptProfiles.build(
+        kind,
+        userInstructions:
+            normalizedPrompt.isEmpty ? null : normalizedPrompt,
+      );
     }
     if (normalizedPrompt.isEmpty) return false;
 
