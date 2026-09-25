@@ -2,7 +2,7 @@ import { assertEquals } from "@std/assert";
 import { createTripoBalanceHandler } from "../tripo-balance/index.ts";
 
 function request(authenticated = true): Request {
-  const headers = new Headers();
+  const headers = new Headers();\n  headers.set("x-tripo-api-key", "tsk_test_key_12345678901234567890");
   if (authenticated) headers.set("authorization", "Bearer user-token");
   return new Request("https://edge.test/tripo-balance", {
     method: "POST",
