@@ -41,7 +41,16 @@ const baseDeps = {
         : null,
     ),
   signGeneratedImageUrl: (_path: string) => Promise.resolve("https://signed.test/head.png"),
-  createImageToModel: (_input: { input: string }) => Promise.resolve("task-model-1"),
+  createImageToModel: (_input: {
+    input: string;
+    model: string;
+    faceLimit?: number;
+    quad?: boolean;
+    geometryQuality?: "standard" | "detailed";
+    texture: boolean;
+    pbr: boolean;
+    enableImageAutofix: boolean;
+  }) => Promise.resolve("task-model-1"),
   insertJob: (_input: unknown) => Promise.resolve("job-model-1"),
 };
 
@@ -83,7 +92,7 @@ Deno.test("generate-model prefers prior Tripo image task id", async () => {
   let providerInput = "";
   const handler = createGenerateModelHandler({
     ...baseDeps,
-    createImageToModel: (input: { input: string }) => {
+    createImageToModel: (input) => {
       providerInput = input.input;
       return Promise.resolve("task-model-1");
     },
@@ -95,4 +104,66 @@ Deno.test("generate-model prefers prior Tripo image task id", async () => {
   assertEquals(response.status, 202);
   assertEquals(body, { job_id: "job-model-1" });
   assertEquals(providerInput, "task-image-1");
+});
+
+
+Deno.test("generate-model maps low-poly quad settings to P2", async () => {
+  let providerRequest: Record<string, unknown> = {};
+  let inserted: Record<string, unknown> = {};
+
+  const handler = createGenerateModelHandler({
+    ...baseDeps,
+    createImageToModel: (input) => {
+      providerRequest = input;
+      return Promise.resolve("task-model-quad");
+    },
+    insertJob: (input) => {
+      inserted = input;
+      return Promise.resolve("job-model-quad");
+    },
+  });
+
+  const response = await handler(
+    request({
+      asset_result_id: "asset-1",
+      quality_preset: "low_poly",
+      topology: "quads",
+      face_limit: 12000,
+      texture: true,
+      pbr: false,
+      enable_image_autofix: true,
+    }),
+  );
+
+  assertEquals(response.status, 202);
+  assertEquals(providerRequest, {
+    input: "task-image-1",
+    model: "P2-20260801",
+    faceLimit: 12000,
+    quad: true,
+    geometryQuality: undefined,
+    texture: true,
+    pbr: false,
+    enableImageAutofix: true,
+  });
+  const redacted = inserted.request_payload_redacted as Record<string, unknown>;
+  assertEquals(redacted.quality_preset, "low_poly");
+  assertEquals(redacted.topology, "quads");
+  assertEquals(redacted.face_limit, 12000);
+});
+
+Deno.test("generate-model rejects face limit outside selected mode", async () => {
+  const handler = createGenerateModelHandler(baseDeps);
+  const response = await handler(
+    request({
+      asset_result_id: "asset-1",
+      quality_preset: "low_poly",
+      topology: "quads",
+      face_limit: 50000,
+    }),
+  );
+
+  assertEquals(response.status, 400);
+  const body = await response.json();
+  assertEquals(body.error.code, "invalid_face_limit");
 });
