@@ -110,7 +110,7 @@ Deno.test("missing api key fails before network access", async () => {
   assertEquals(fetchCalls, 0);
 });
 
-Deno.test("image-to-model pins exact MVP model", async () => {
+Deno.test("image-to-model forwards configurable mesh settings", async () => {
   let requestedBody: Record<string, unknown> | undefined;
 
   const client = new TripoClient({
@@ -121,12 +121,25 @@ Deno.test("image-to-model pins exact MVP model", async () => {
     },
   });
 
-  const taskId = await client.createImageToModel({ input: "task_image_1" });
+  const taskId = await client.createImageToModel({
+    input: "task_image_1",
+    model: "v3.1-20260211",
+    faceLimit: 500000,
+    quad: false,
+    geometryQuality: "detailed",
+    texture: true,
+    pbr: true,
+    enableImageAutofix: true,
+  });
 
   assertEquals(taskId, "task_3d");
   assertEquals(requestedBody?.model, "v3.1-20260211");
+  assertEquals(requestedBody?.face_limit, 500000);
+  assertEquals(requestedBody?.quad, false);
+  assertEquals(requestedBody?.geometry_quality, "detailed");
   assertEquals(requestedBody?.texture, true);
   assertEquals(requestedBody?.pbr, true);
+  assertEquals(requestedBody?.enable_image_autofix, true);
 });
 
 Deno.test("getTask accepts queued response without progress", async () => {
