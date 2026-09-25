@@ -17,6 +17,8 @@ function request(body: unknown, authenticated = true): Request {
 
 const baseDeps = {
   authenticate: (_token: string) => Promise.resolve("user-1"),
+  findOwnedProject: (_userId: string, projectId: string) =>
+    Promise.resolve(projectId === "project-1" ? { id: projectId } : null),
   findOwnedAssetResult: (_userId: string, assetResultId: string) =>
     Promise.resolve(
       assetResultId === "asset-1"
@@ -42,7 +44,12 @@ const baseDeps = {
         }
         : null,
     ),
-  signGeneratedImageUrl: (_path: string) => Promise.resolve("https://signed.test/head.png"),
+  signGeneratedImageUrl: (_path: string) =>
+    Promise.resolve("https://signed.test/head.png"),
+  signReferenceImageUrl: (_path: string) =>
+    Promise.resolve("https://signed.test/reference.png"),
+  uploadImageToProvider: (_apiKey: string, _url: string) =>
+    Promise.resolve("file_token_uploaded_1"),
   createImageToModel: (_apiKey: string, _input: {
     input: string;
     model: string;
