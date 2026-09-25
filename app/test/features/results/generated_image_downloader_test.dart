@@ -1,10 +1,13 @@
 import 'dart:typed_data';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mohsen_tripo/src/domain/assets/asset_result.dart';
 import 'package:mohsen_tripo/src/features/results/generated_image_downloader.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('download fetches signed image and saves with stable gallery filename',
       () async {
     String? fetchedUrl;
@@ -45,27 +48,22 @@ void main() {
     expect(savedBytes, Uint8List.fromList([1, 2, 3]));
   });
 
-  test('downloadModel saves GLB with stable Downloads filename', () async {
-    String? fetchedUrl;
-    String? savedName;
-    String? savedMime;
-    Uint8List? savedBytes;
+  test('downloadModel delegates URL streaming to Android', () async {
+    const channel = MethodChannel('com.mohsentripo.mohsen_tripo/media');
+    MethodCall? received;
 
-    final downloader = GeneratedImageDownloader(
-      fetcher: (url) async {
-        fetchedUrl = url;
-        return Uint8List.fromList([0x67, 0x6c, 0x54, 0x46]);
-      },
-      modelSaver: ({
-        required bytes,
-        required fileName,
-        required mimeType,
-      }) async {
-        savedBytes = bytes;
-        savedName = fileName;
-        savedMime = mimeType;
-      },
-    );
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      received = call;
+      return 'content://downloads/model-123.glb';
+    });
+
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+    });
+
+    final downloader = GeneratedImageDownloader();
 
     await downloader.downloadModel(
       const AssetResult(
@@ -78,10 +76,11 @@ void main() {
       'https://signed.test/model.glb',
     );
 
-    expect(fetchedUrl, 'https://signed.test/model.glb');
-    expect(savedName, 'Mohsen-Tripo-model-123.glb');
-    expect(savedMime, 'model/gltf-binary');
-    expect(savedBytes, Uint8List.fromList([0x67, 0x6c, 0x54, 0x46]));
+    expect(received?.method, 'saveModelFromUrl');
+    expect(received?.arguments, {
+      'url': 'https://signed.test/model.glb',
+      'fileName': 'Mohsen-Tripo-model-123.glb',
+      'mimeType': 'model/gltf-binary',
+    });
   });
-
 }
