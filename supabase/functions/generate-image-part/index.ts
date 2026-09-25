@@ -38,6 +38,7 @@ type GenerateImagePartDeps = {
     userId?: string,
   ) => Promise<TemplatePart | null>;
   signReferenceUrl: (path: string) => Promise<string>;
+  uploadReferenceToProvider: (signedUrl: string) => Promise<string>;
   createImageToImage: (input: { input: string; prompt: string }) => Promise<string>;
   insertJob: (input: Record<string, unknown>) => Promise<string>;
 };
@@ -115,8 +116,9 @@ export function createGenerateImagePartHandler(
       }
 
       const referenceUrl = await deps.signReferenceUrl(project.referenceImagePath);
+      const providerInput = await deps.uploadReferenceToProvider(referenceUrl);
       const providerTaskId = await deps.createImageToImage({
-        input: referenceUrl,
+        input: providerInput,
         prompt,
       });
 
@@ -132,6 +134,7 @@ export function createGenerateImagePartHandler(
           part_key: part.key,
           custom_instructions_present: customInstructions !== undefined,
           prompt_source: directPartPrompt === undefined ? "template" : "client_exact",
+          provider_input_source: "file_token",
         },
       });
 
@@ -202,7 +205,8 @@ function createDefaultDeps(): GenerateImagePartDeps {
         promptFragment: part.prompt_fragment,
       };
     },
-    signReferenceUrl: (path) => createSignedObjectUrl("reference-images", path),
+    signReferenceUrl: (path) => createSignedObjectUrl("reference-images", path, 600),
+    uploadReferenceToProvider: (signedUrl) => tripo.uploadImageFromUrl(signedUrl),
     createImageToImage: (input) => tripo.createImageToImage(input),
     insertJob: async (input) => {
       const row = await adminInsertOne<{ id: string }>("generation_jobs", input, "id");
