@@ -26,6 +26,14 @@ abstract interface class GenerationGateway {
   });
 }
 
+abstract interface class DirectModelGenerationGateway {
+  Future<String> generateModelFromReferencePath({
+    required String projectId,
+    required String referenceStoragePath,
+    ModelGenerationSettings settings = const ModelGenerationSettings(),
+  });
+}
+
 final class TripoCreditBalance {
   const TripoCreditBalance({
     required this.available,
@@ -65,7 +73,8 @@ final class DefaultGenerationGateway
         GenerationGateway,
         ActiveGenerationJobsGateway,
         CreditBalanceGateway,
-        TripoCredentialValidationGateway {
+        TripoCredentialValidationGateway,
+        DirectModelGenerationGateway {
   DefaultGenerationGateway(
     this._invoker, {
     this.jobDataSource,
@@ -128,6 +137,28 @@ final class DefaultGenerationGateway
       'generate-model',
       {
         'asset_result_id': assetResultId,
+        ...settings.toFunctionBody(),
+      },
+    );
+  }
+
+  @override
+  Future<String> generateModelFromReferencePath({
+    required String projectId,
+    required String referenceStoragePath,
+    ModelGenerationSettings settings = const ModelGenerationSettings(),
+  }) {
+    final normalizedProjectId = projectId.trim();
+    final normalizedPath = referenceStoragePath.trim();
+    if (normalizedProjectId.isEmpty || normalizedPath.isEmpty) {
+      throw AppFailure.validation('Direct model image is incomplete.');
+    }
+
+    return _invokeForJobId(
+      'generate-model',
+      {
+        'project_id': normalizedProjectId,
+        'reference_storage_path': normalizedPath,
         ...settings.toFunctionBody(),
       },
     );
