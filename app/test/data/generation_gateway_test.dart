@@ -21,6 +21,31 @@ final class FakeFunctionInvoker implements FunctionInvoker {
     lastHeaders = headers;
     return responses[functionName] ?? const {};
   }
+  test('generateModelFromReferencePath invokes model Edge Function', () async {
+    final invoker = FakeFunctionInvoker()
+      ..responses['generate-model'] = {'job_id': 'job-direct-model'};
+    final gateway = gatewayWith(invoker);
+    final directGateway = gateway as DirectModelGenerationGateway;
+
+    final jobId = await directGateway.generateModelFromReferencePath(
+      projectId: 'project-1',
+      referenceStoragePath:
+          'user-1/project-1/model-inputs/model-input-1.png',
+      settings: const ModelGenerationSettings(
+        preset: ModelQualityPreset.standard,
+        topology: ModelTopology.triangles,
+      ),
+    );
+
+    expect(jobId, 'job-direct-model');
+    expect(invoker.lastFunction, 'generate-model');
+    expect(invoker.lastBody?['project_id'], 'project-1');
+    expect(
+      invoker.lastBody?['reference_storage_path'],
+      'user-1/project-1/model-inputs/model-input-1.png',
+    );
+    expect(invoker.lastBody?.containsKey('asset_result_id'), isFalse);
+  });
 }
 
 final class FakeCredentialProvider implements ActiveTripoCredentialProvider {
