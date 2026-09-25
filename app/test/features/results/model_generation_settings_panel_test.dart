@@ -13,11 +13,13 @@ void main() {
         home: StatefulBuilder(
           builder: (context, setState) {
             return Scaffold(
-              body: ModelGenerationSettingsPanel(
-                settings: settings,
-                onChanged: (next) {
-                  setState(() => settings = next);
-                },
+              body: SingleChildScrollView(
+                child: ModelGenerationSettingsPanel(
+                  settings: settings,
+                  onChanged: (next) {
+                    setState(() => settings = next);
+                  },
+                ),
               ),
             );
           },
