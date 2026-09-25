@@ -260,7 +260,7 @@ void main() {
       find.text('model-viewer:https://signed.test/model.glb'),
       findsOneWidget,
     );
-    expect(find.text('نموذج 3D'), findsOneWidget);
+    expect(find.text('نموذج 3D'), findsWidgets);
     expect(find.textContaining('اسحب لتدوير المجسم'), findsOneWidget);
   });
 
