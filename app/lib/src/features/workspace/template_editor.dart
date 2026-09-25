@@ -88,9 +88,9 @@ final class TemplateEditorController extends ChangeNotifier {
   }) {
     final index = _parts.indexWhere((part) => part.key == key);
     final normalizedLabel = label.trim();
+    if (index < 0 || normalizedLabel.isEmpty) return false;
     final selectedMode = promptMode ?? _parts[index].promptMode;
     var normalizedPrompt = promptFragment.trim();
-    if (index < 0 || normalizedLabel.isEmpty) return false;
 
     final kind = PartKindClassifier.classify(normalizedLabel);
     if (selectedMode == PartPromptMode.smart && normalizedPrompt.isEmpty) {
@@ -203,12 +203,14 @@ final class TemplateEditor extends StatefulWidget {
     this.generationState = const {},
     this.onRetry,
     this.onGenerate,
+    this.onSelectRegion,
   });
 
   final TemplateEditorController controller;
   final Map<String, GenerationPartState> generationState;
   final ValueChanged<String>? onRetry;
   final ValueChanged<String>? onGenerate;
+  final Future<void> Function(EditableTemplatePart part)? onSelectRegion;
 
   @override
   State<TemplateEditor> createState() => _TemplateEditorState();
@@ -217,6 +219,7 @@ final class TemplateEditor extends StatefulWidget {
 final class _TemplateEditorState extends State<TemplateEditor> {
   final _labelController = TextEditingController();
   final _promptController = TextEditingController();
+  PartPromptMode _newPartMode = PartPromptMode.smart;
   String? _error;
 
   @override
@@ -249,45 +252,84 @@ final class _TemplateEditorState extends State<TemplateEditor> {
   Future<void> _editPart(EditableTemplatePart part) async {
     final labelController = TextEditingController(text: part.label);
     final promptController = TextEditingController(text: part.promptFragment);
+    var mode = part.promptMode;
 
     final shouldSave = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('تعديل الجزء والـPrompt'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: labelController,
-                decoration: const InputDecoration(
-                  labelText: 'اسم الجزء',
-                  border: OutlineInputBorder(),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('تعديل الجزء والـPrompt'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SegmentedButton<PartPromptMode>(
+                  segments: const [
+                    ButtonSegment(
+                      value: PartPromptMode.smart,
+                      icon: Icon(Icons.auto_awesome),
+                      label: Text('Smart'),
+                    ),
+                    ButtonSegment(
+                      value: PartPromptMode.exact,
+                      icon: Icon(Icons.text_fields),
+                      label: Text('Exact'),
+                    ),
+                  ],
+                  selected: {mode},
+                  onSelectionChanged: (selection) {
+                    setDialogState(() => mode = selection.single);
+                  },
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: promptController,
-                minLines: 4,
-                maxLines: 8,
-                decoration: const InputDecoration(
-                  labelText: 'Prompt — سيُرسل كما كتبته',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: labelController,
+                  decoration: const InputDecoration(
+                    labelText: 'اسم الجزء',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                if (mode == PartPromptMode.smart)
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton.icon(
+                      onPressed: () {
+                        final kind = PartKindClassifier.classify(
+                          labelController.text,
+                        );
+                        promptController.text =
+                            PartPromptProfiles.build(kind);
+                      },
+                      icon: const Icon(Icons.auto_fix_high),
+                      label: const Text('بناء Smart Prompt من الاسم'),
+                    ),
+                  ),
+                TextField(
+                  controller: promptController,
+                  minLines: 4,
+                  maxLines: 10,
+                  decoration: InputDecoration(
+                    labelText: mode == PartPromptMode.smart
+                        ? 'Smart Prompt — قابل للتعديل'
+                        : 'Exact Prompt — سيُرسل كما كتبته',
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('حفظ'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('حفظ'),
-          ),
-        ],
       ),
     );
 
@@ -296,6 +338,7 @@ final class _TemplateEditorState extends State<TemplateEditor> {
         key: part.key,
         label: labelController.text,
         promptFragment: promptController.text,
+        promptMode: mode,
       );
     }
 
@@ -307,9 +350,14 @@ final class _TemplateEditorState extends State<TemplateEditor> {
     final added = widget.controller.addCustomPart(
       label: _labelController.text,
       promptFragment: _promptController.text,
+      promptMode: _newPartMode,
     );
     if (!added) {
-      setState(() => _error = 'اكتب اسم الجزء والـPrompt.');
+      setState(
+        () => _error = _newPartMode == PartPromptMode.smart
+            ? 'اكتب اسم الجزء، وسيبني Smart Prompt تلقائيًا.'
+            : 'اكتب اسم الجزء والـPrompt.',
+      );
       return;
     }
 
@@ -348,6 +396,14 @@ final class _TemplateEditorState extends State<TemplateEditor> {
                   ? null
                   : () => widget.onGenerate!(part.key),
               onEdit: () => _editPart(part),
+              promptMode: part.promptMode,
+              hasRegion: part.region != null,
+              onSelectRegion: widget.onSelectRegion == null
+                  ? null
+                  : () => widget.onSelectRegion!(part),
+              onRebuildSmartPrompt: part.promptMode == PartPromptMode.smart
+                  ? () => widget.controller.rebuildSmartPrompt(part.key)
+                  : null,
               onEnabledChanged: (enabled) {
                 widget.controller.setEnabled(part.key, enabled);
               },
@@ -355,11 +411,35 @@ final class _TemplateEditorState extends State<TemplateEditor> {
           },
         ),
         const SizedBox(height: 12),
+        Text(
+          'إضافة جزء يدوي',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        SegmentedButton<PartPromptMode>(
+          segments: const [
+            ButtonSegment(
+              value: PartPromptMode.smart,
+              icon: Icon(Icons.auto_awesome),
+              label: Text('Smart Prompt'),
+            ),
+            ButtonSegment(
+              value: PartPromptMode.exact,
+              icon: Icon(Icons.text_fields),
+              label: Text('Exact Prompt'),
+            ),
+          ],
+          selected: {_newPartMode},
+          onSelectionChanged: (selection) {
+            setState(() => _newPartMode = selection.single);
+          },
+        ),
+        const SizedBox(height: 8),
         TextField(
           controller: _labelController,
           decoration: const InputDecoration(
             labelText: 'اسم الجزء',
-            hintText: 'مثال: Arm with shoulder',
+            hintText: 'مثال: bandaged neck أو Arm with shoulder',
             border: OutlineInputBorder(),
           ),
         ),
@@ -368,10 +448,14 @@ final class _TemplateEditorState extends State<TemplateEditor> {
           controller: _promptController,
           minLines: 2,
           maxLines: 4,
-          decoration: const InputDecoration(
-            labelText: 'Prompt الجزء — سيُرسل كما كتبته',
-            hintText: 'اكتب البرومبت كاملًا هنا',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: _newPartMode == PartPromptMode.smart
+                ? 'تعليمات إضافية (اختياري)'
+                : 'Exact Prompt — سيُرسل كما كتبته',
+            hintText: _newPartMode == PartPromptMode.smart
+                ? 'اتركه فارغًا لبناء Prompt ذكي من اسم الجزء'
+                : 'اكتب البرومبت كاملًا هنا',
+            border: const OutlineInputBorder(),
           ),
         ),
         if (_error != null) ...[
