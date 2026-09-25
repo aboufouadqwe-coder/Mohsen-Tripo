@@ -115,7 +115,7 @@ void main() {
     expect(controller.state['right_hand']!.assetResultId, 'right-result');
   });
 
-  test('all enabled parts are submitted before any polling begins', () async {
+  test('batch generation waits for each part before submitting the next', () async {
     final gateway = FakeBatchGateway()
       ..resultQueueByPart.addAll({
         'head': [successJob('head', 'head-result')],
@@ -141,10 +141,16 @@ void main() {
     );
 
     expect(
-      gateway.events.take(3).toList(),
-      ['submit:head', 'submit:left_hand', 'submit:right_hand'],
+      gateway.events,
+      [
+        'submit:head',
+        'poll:head',
+        'submit:left_hand',
+        'poll:left_hand',
+        'submit:right_hand',
+        'poll:right_hand',
+      ],
     );
-    expect(gateway.events[3].startsWith('poll:'), isTrue);
   });
 
   test('single-part generation submits and polls only requested part', () async {
