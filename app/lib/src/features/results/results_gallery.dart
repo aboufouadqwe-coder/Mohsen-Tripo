@@ -12,6 +12,7 @@ final class ResultsGallery extends StatefulWidget {
     required this.repository,
     this.onGenerateModel,
     this.imagePreviewBuilder,
+    this.onDownloadImage,
     this.refreshVersion = 0,
     this.modelGenerationBusy = false,
     this.activeModelAssetResultId,
@@ -22,6 +23,7 @@ final class ResultsGallery extends StatefulWidget {
   final ResultsRepository repository;
   final Future<void> Function(AssetResult asset)? onGenerateModel;
   final ResultImagePreviewBuilder? imagePreviewBuilder;
+  final ResultImageDownload? onDownloadImage;
   final int refreshVersion;
   final bool modelGenerationBusy;
   final String? activeModelAssetResultId;
@@ -137,6 +139,7 @@ final class _ResultsGalleryState extends State<ResultsGallery> {
                 entry: entry,
                 onGenerateModel: widget.onGenerateModel,
                 imagePreviewBuilder: widget.imagePreviewBuilder,
+                onDownloadImage: widget.onDownloadImage,
                 modelGenerationBusy: widget.modelGenerationBusy,
                 activeModelAssetResultId:
                     widget.activeModelAssetResultId,
