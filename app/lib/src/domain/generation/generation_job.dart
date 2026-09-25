@@ -29,6 +29,7 @@ final class GenerationJob {
     this.mimeType,
     this.createdAt,
     this.completedAt,
+    this.providerCredentialFingerprint,
   });
 
   final String id;
@@ -46,6 +47,7 @@ final class GenerationJob {
   final String? mimeType;
   final DateTime? createdAt;
   final DateTime? completedAt;
+  final String? providerCredentialFingerprint;
 
   Duration? get duration {
     final start = createdAt;
