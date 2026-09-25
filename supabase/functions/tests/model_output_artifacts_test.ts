@@ -57,3 +57,18 @@ Deno.test("model output normalizes uncommon binary MIME types to GLB", () => {
     },
   );
 });
+
+
+Deno.test("quad FBX output is persisted as FBX", () => {
+  assertEquals(
+    providerOutputTarget(
+      "generated-models",
+      "application/octet-stream",
+      "https://provider.test/model_quad.fbx",
+    ),
+    {
+      extension: "fbx",
+      mimeType: "application/octet-stream",
+    },
+  );
+});
