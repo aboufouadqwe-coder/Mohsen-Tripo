@@ -166,7 +166,7 @@ function providerSettingsFromBody(
       maxFaces = 25000;
     } else {
       model = "P1-20260311";
-      quad = false;
+      quad = undefined;
       minFaces = 50;
       maxFaces = 20000;
     }
