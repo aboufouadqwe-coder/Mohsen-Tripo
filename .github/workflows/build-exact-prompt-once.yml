@@ -1,4 +1,4 @@
-name: Verify and release batch-timer fix APK
+name: Verify and release smart part planner APK
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: android-mvp-batch-timer-${{ github.ref }}
+  group: android-mvp-smart-parts-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -61,7 +61,7 @@ jobs:
       - name: Upload release APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mohsen-tripo-batch-timer-fix
+          name: mohsen-tripo-smart-part-planner
           path: app/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           retention-days: 30
@@ -70,10 +70,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="android-mvp-batch-timer-${GITHUB_SHA::7}"
-          cp app/build/app/outputs/flutter-apk/app-release.apk /tmp/Mohsen-Tripo-batch-timer-fix.apk
-          gh release create "$TAG" /tmp/Mohsen-Tripo-batch-timer-fix.apk \
+          TAG="android-mvp-smart-parts-${GITHUB_SHA::7}"
+          cp app/build/app/outputs/flutter-apk/app-release.apk /tmp/Mohsen-Tripo-smart-part-planner.apk
+          gh release create "$TAG" /tmp/Mohsen-Tripo-smart-part-planner.apk \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Mohsen-Tripo Batch + Timer Fix" \
-            --notes "Serializes multi-part image generation to avoid Tripo upload/parallelism failures, adds live elapsed time and persisted generation duration, and preserves parts, balance, 3D mesh controls, viewer, and download fixes."
+            --title "Mohsen-Tripo Smart Part Planner" \
+            --notes "Adds on-device face/pose analysis, Smart Part Planner suggestions, MetaHuman-ready smart prompt profiles, Exact/Smart prompt modes, manual rectangular part-region selection and per-part cropped references. Preserves sequential multi-part generation, timers, credits, 3D mesh controls, viewer, and download fixes."
