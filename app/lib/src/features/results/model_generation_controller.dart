@@ -6,6 +6,7 @@ import '../../core/analytics/analytics.dart';
 import '../../data/supabase/generation_gateway.dart';
 import '../../domain/assets/asset_result.dart';
 import '../../domain/generation/generation_job.dart';
+import '../../domain/generation/model_generation_settings.dart';
 
 typedef ModelJobPoller = Future<GenerationJob> Function(String jobId);
 typedef ModelJobProgressPoller = Future<GenerationJob> Function(
@@ -38,7 +39,10 @@ final class ModelGenerationController extends ChangeNotifier {
     unawaited(captureAnalyticsSafely(analytics, event, properties));
   }
 
-  Future<void> generateFromImage(AssetResult asset) async {
+  Future<void> generateFromImage(
+    AssetResult asset, {
+    ModelGenerationSettings settings = const ModelGenerationSettings(),
+  }) async {
     if (_disposed || isBusy) return;
 
     if (!asset.isImage) {
@@ -59,7 +63,10 @@ final class ModelGenerationController extends ChangeNotifier {
     );
 
     try {
-      final jobId = await gateway.generateModel(asset.id);
+      final jobId = await gateway.generateModel(
+        asset.id,
+        settings: settings,
+      );
       if (_disposed) return;
 
       job = GenerationJob(
