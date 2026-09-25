@@ -29,6 +29,27 @@ final class FakeReferenceStorage implements ReferenceStoragePort {
     uploadedBytes = bytes;
     uploadedContentType = contentType;
   }
+  test('direct 3d model input is stored under owned model-inputs path', () async {
+    final source = img.Image(width: 300, height: 300);
+    final bytes = Uint8List.fromList(img.encodePng(source));
+    final storage = FakeReferenceStorage(bytes);
+    final repository = DefaultReferenceImageRepository(
+      storage,
+      objectId: () => 'model-input-1',
+    );
+
+    final directRepository = repository as DirectModelImageRepository;
+    final path = await directRepository.uploadModelInput(
+      userId: 'user-1',
+      projectId: 'project-1',
+      bytes: bytes,
+      extension: 'png',
+    );
+
+    expect(path, 'user-1/project-1/model-inputs/model-input-1.png');
+    expect(storage.uploadedPath, path);
+    expect(storage.uploadedContentType, 'image/png');
+  });
 }
 
 void main() {
