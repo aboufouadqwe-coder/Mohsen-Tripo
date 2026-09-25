@@ -1,29 +1,55 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mohsen_tripo/src/data/supabase/generation_gateway.dart';
+import 'package:mohsen_tripo/src/domain/tripo/tripo_credential.dart';
 import 'package:mohsen_tripo/src/domain/generation/generation_job.dart';
 import 'package:mohsen_tripo/src/domain/generation/model_generation_settings.dart';
 
 final class FakeFunctionInvoker implements FunctionInvoker {
   String? lastFunction;
   Map<String, Object?>? lastBody;
+  Map<String, String>? lastHeaders;
   final Map<String, Map<String, Object?>> responses = {};
 
   @override
   Future<Map<String, Object?>> invoke(
     String functionName,
-    Map<String, Object?> body,
-  ) async {
+    Map<String, Object?> body, {
+    Map<String, String> headers = const {},
+  }) async {
     lastFunction = functionName;
     lastBody = body;
+    lastHeaders = headers;
     return responses[functionName] ?? const {};
   }
 }
+
+final class FakeCredentialProvider implements ActiveTripoCredentialProvider {
+  const FakeCredentialProvider();
+
+  @override
+  Future<TripoCredential?> getActive() async => TripoCredential(
+        name: 'Test',
+        apiKey: 'tsk_test_key_12345678901234567890',
+        fingerprint: 'fingerprint-1',
+        createdAt: DateTime.utc(2026, 9, 26),
+      );
+
+  @override
+  Future<TripoCredential?> findByFingerprint(String fingerprint) async =>
+      fingerprint == 'fingerprint-1' ? getActive() : null;
+}
+
+DefaultGenerationGateway gatewayWith(FakeFunctionInvoker invoker) =>
+    DefaultGenerationGateway(
+      invoker,
+      credentialProvider: const FakeCredentialProvider(),
+    );
 
 void main() {
   test('generateSourceImage invokes the expected Edge Function', () async {
     final invoker = FakeFunctionInvoker()
       ..responses['generate-source-image'] = {'job_id': 'job-source'};
-    final gateway = DefaultGenerationGateway(invoker);
+    final gateway = gatewayWith(invoker);
 
     final jobId = await gateway.generateSourceImage(
       projectId: 'project-1',
@@ -36,12 +62,16 @@ void main() {
       'project_id': 'project-1',
       'prompt': 'old hospital patient',
     });
+    expect(
+      invoker.lastHeaders?['x-tripo-api-key'],
+      'tsk_test_key_12345678901234567890',
+    );
   });
 
   test('generateImagePart omits null custom instructions', () async {
     final invoker = FakeFunctionInvoker()
       ..responses['generate-image-part'] = {'job_id': 'job-part'};
-    final gateway = DefaultGenerationGateway(invoker);
+    final gateway = gatewayWith(invoker);
 
     final jobId = await gateway.generateImagePart(
       projectId: 'project-1',
@@ -58,7 +88,7 @@ void main() {
   test('generateImagePart forwards exact part label and prompt', () async {
     final invoker = FakeFunctionInvoker()
       ..responses['generate-image-part'] = {'job_id': 'job-part'};
-    final gateway = DefaultGenerationGateway(invoker);
+    final gateway = gatewayWith(invoker);
 
     final jobId = await gateway.generateImagePart(
       projectId: 'project-1',
@@ -79,7 +109,7 @@ void main() {
   test('generateImagePart forwards cropped reference storage path', () async {
     final invoker = FakeFunctionInvoker()
       ..responses['generate-image-part'] = {'job_id': 'job-part'};
-    final gateway = DefaultGenerationGateway(invoker);
+    final gateway = gatewayWith(invoker);
 
     final jobId = await gateway.generateImagePart(
       projectId: 'project-1',
@@ -111,7 +141,7 @@ void main() {
         'status': 'running',
         'progress': 0.4,
       };
-    final gateway = DefaultGenerationGateway(invoker);
+    final gateway = gatewayWith(invoker);
 
     final job = await gateway.refreshJob('job-1');
 
@@ -125,7 +155,7 @@ void main() {
   test('generateModel invokes model Edge Function', () async {
     final invoker = FakeFunctionInvoker()
       ..responses['generate-model'] = {'job_id': 'job-model'};
-    final gateway = DefaultGenerationGateway(invoker);
+    final gateway = gatewayWith(invoker);
 
     final jobId = await gateway.generateModel(
       'asset-1',
@@ -158,7 +188,7 @@ void main() {
         'balance': 987.5,
         'frozen': 20,
       };
-    final gateway = DefaultGenerationGateway(invoker);
+    final gateway = gatewayWith(invoker);
 
     final balance = await gateway.getCreditBalance();
 
