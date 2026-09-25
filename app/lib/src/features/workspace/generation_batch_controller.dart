@@ -60,19 +60,17 @@ final class GenerationBatchController extends ChangeNotifier {
       );
     }
 
-    final submitted = <String, String>{};
     for (final part in normalizedParts) {
       if (_disposed) return;
-      final jobId = await _submitPart(part);
-      if (jobId != null) submitted[part.key] = jobId;
-    }
 
-    await Future.wait(
-      submitted.entries.map(
-        (entry) => _pollPart(entry.key, entry.value),
-      ),
-      eagerError: false,
-    );
+      final jobId = await _submitPart(part);
+      if (jobId == null || _disposed) continue;
+
+      // Keep Tripo image generation intentionally serialized. Each part first
+      // uploads the private reference image to /v3/files, so launching many
+      // parts together can hit provider upload/parallelism limits.
+      await _pollPart(part.key, jobId);
+    }
   }
 
   Future<void> generatePart(GenerationPartRequest part) async {
