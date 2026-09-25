@@ -10,6 +10,8 @@ abstract interface class GenerationGateway {
   Future<String> generateImagePart({
     required String projectId,
     required String partKey,
+    String? partLabel,
+    String? partPrompt,
     String? customInstructions,
   });
 
@@ -61,12 +63,18 @@ final class DefaultGenerationGateway
   Future<String> generateImagePart({
     required String projectId,
     required String partKey,
+    String? partLabel,
+    String? partPrompt,
     String? customInstructions,
   }) async {
     final body = <String, Object?>{
       'project_id': projectId,
       'part_key': partKey,
     };
+    if (partLabel != null && partPrompt != null) {
+      body['part_label'] = partLabel;
+      body['part_prompt'] = partPrompt;
+    }
     if (customInstructions != null) {
       body['custom_instructions'] = customInstructions;
     }
