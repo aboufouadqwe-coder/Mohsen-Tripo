@@ -164,6 +164,8 @@ final class _WorkspacePageState extends State<WorkspacePage> {
       final modelController = ModelGenerationController(
         gateway: widget.generationGateway,
         pollUntilTerminal: modelPollingService.pollUntilTerminal,
+        pollUntilTerminalWithUpdates:
+            modelPollingService.pollUntilTerminalWithUpdates,
       );
 
       batchController.addListener(_onBatchChanged);
