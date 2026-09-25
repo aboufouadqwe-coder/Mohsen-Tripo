@@ -1,5 +1,8 @@
 import { assertEquals } from "@std/assert";
-import { providerArtifactUrls } from "../refresh-generation-job/index.ts";
+import {
+  providerArtifactUrls,
+  providerOutputTarget,
+} from "../refresh-generation-job/index.ts";
 
 Deno.test("model output exposes persisted GLB and preview artifacts", () => {
   assertEquals(
@@ -34,5 +37,23 @@ Deno.test("image output accepts Tripo v3 generated_image_url", () => {
         url: "https://provider.test/generated.png",
       },
     ],
+  );
+});
+
+
+Deno.test("model output normalizes uncommon binary MIME types to GLB", () => {
+  assertEquals(
+    providerOutputTarget("generated-models", "text/plain"),
+    {
+      extension: "glb",
+      mimeType: "model/gltf-binary",
+    },
+  );
+  assertEquals(
+    providerOutputTarget("generated-models", "binary/octet-stream"),
+    {
+      extension: "glb",
+      mimeType: "binary/octet-stream",
+    },
   );
 });
