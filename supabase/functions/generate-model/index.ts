@@ -309,11 +309,12 @@ export function createGenerateModelHandler(
           throw new HttpError(404, "not_found", "Project was not found.");
         }
 
+        const directPath = directReferencePath!;
         const requiredPrefix =
           userId + "/" + directProject.id + "/model-inputs/";
         if (
-          directReferencePath!.includes("..") ||
-          !directReferencePath.startsWith(requiredPrefix)
+          directPath.includes("..") ||
+          !directPath.startsWith(requiredPrefix)
         ) {
           throw new HttpError(
             400,
@@ -322,9 +323,7 @@ export function createGenerateModelHandler(
           );
         }
 
-        const signedUrl = await deps.signReferenceImageUrl(
-          directReferencePath,
-        );
+        const signedUrl = await deps.signReferenceImageUrl(directPath);
         providerInput = await deps.uploadImageToProvider(
           credential.apiKey,
           signedUrl,
