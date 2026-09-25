@@ -152,3 +152,39 @@ Deno.test("generate-image-part rejects incomplete direct prompt pair", async () 
 
   assertEquals(response.status, 400);
 });
+
+
+Deno.test("generate-image-part accepts owned cropped reference path", async () => {
+  let signedPath = "";
+  const handler = createGenerateImagePartHandler({
+    ...baseDeps,
+    signReferenceUrl: (path: string) => {
+      signedPath = path;
+      return Promise.resolve("https://signed.test/crop.png");
+    },
+  });
+
+  const response = await handler(request({
+    project_id: "project-1",
+    part_key: "head",
+    part_label: "Head Clean",
+    part_prompt: "Generate only a clean bald head.",
+    reference_storage_path: "user-1/project-1/parts/head.png",
+  }));
+
+  assertEquals(response.status, 202);
+  assertEquals(signedPath, "user-1/project-1/parts/head.png");
+});
+
+Deno.test("generate-image-part rejects crop path outside owned project", async () => {
+  const handler = createGenerateImagePartHandler(baseDeps);
+  const response = await handler(request({
+    project_id: "project-1",
+    part_key: "head",
+    part_label: "Head Clean",
+    part_prompt: "Generate only a clean bald head.",
+    reference_storage_path: "user-2/project-1/parts/head.png",
+  }));
+
+  assertEquals(response.status, 400);
+});
