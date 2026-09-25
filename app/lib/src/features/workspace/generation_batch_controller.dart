@@ -111,6 +111,7 @@ final class GenerationBatchController extends ChangeNotifier {
       _state[partKey] = GenerationPartState.fromJob(
         job,
         submittedJobId: job.id,
+        startedAt: job.createdAt,
       );
       active[partKey] = job.id;
     }
@@ -126,7 +127,11 @@ final class GenerationBatchController extends ChangeNotifier {
 
   Future<String?> _submitPart(GenerationPartRequest part) async {
     final partKey = part.key.trim();
-    _state[partKey] = GenerationPartState.submitting(partKey);
+    final startedAt = DateTime.now();
+    _state[partKey] = GenerationPartState.submitting(
+      partKey,
+      startedAt: startedAt,
+    );
     _notify();
 
     try {
@@ -146,7 +151,11 @@ final class GenerationBatchController extends ChangeNotifier {
         },
       );
 
-      _state[partKey] = GenerationPartState.queued(partKey, jobId);
+      _state[partKey] = GenerationPartState.queued(
+        partKey,
+        jobId,
+        startedAt: startedAt,
+      );
       _notify();
       return jobId;
     } catch (_) {
@@ -159,7 +168,10 @@ final class GenerationBatchController extends ChangeNotifier {
           'error_code': 'submission_failed',
         },
       );
-      _state[partKey] = GenerationPartState.failedSubmission(partKey);
+      _state[partKey] = GenerationPartState.failedSubmission(
+        partKey,
+        startedAt: startedAt,
+      );
       _notify();
       return null;
     }
@@ -167,7 +179,19 @@ final class GenerationBatchController extends ChangeNotifier {
 
   Future<void> _pollPart(String partKey, String jobId) async {
     try {
-      final job = await pollingService.pollUntilTerminal(jobId);
+      final initialStartedAt = _state[partKey]?.startedAt;
+      final job = await pollingService.pollUntilTerminalWithUpdates(
+        jobId,
+        (updatedJob) {
+          if (_disposed) return;
+          _state[partKey] = GenerationPartState.fromJob(
+            updatedJob,
+            submittedJobId: jobId,
+            startedAt: initialStartedAt,
+          );
+          _notify();
+        },
+      );
       if (_disposed) return;
 
       if (job.status == GenerationStatus.success) {
@@ -192,6 +216,7 @@ final class GenerationBatchController extends ChangeNotifier {
       _state[partKey] = GenerationPartState.fromJob(
         job,
         submittedJobId: jobId,
+        startedAt: initialStartedAt,
       );
       _notify();
     } on JobPollingCancelled {
@@ -215,6 +240,8 @@ final class GenerationBatchController extends ChangeNotifier {
         progress: 1,
         errorCode: 'polling_failed',
         errorMessage: 'Generation job could not be refreshed.',
+        startedAt: _state[partKey]?.startedAt,
+        finishedAt: DateTime.now(),
       );
       _notify();
     }
