@@ -38,6 +38,7 @@ const baseDeps = {
         : null,
     ),
   signReferenceUrl: (_path: string) => Promise.resolve("https://signed.test/reference.png"),
+  uploadReferenceToProvider: (_url: string) => Promise.resolve("file_reference_1"),
   createImageToImage: (_input: { input: string; prompt: string }) => Promise.resolve("task-part-1"),
   insertJob: (_input: unknown) => Promise.resolve("job-part-1"),
 };
@@ -76,11 +77,18 @@ Deno.test("generate-image-part maps provider failures without leaking secrets", 
   assertEquals(text.includes(secret), false);
 });
 
-Deno.test("generate-image-part builds authoritative prompt and creates job", async () => {
+Deno.test("generate-image-part uploads private reference and creates job", async () => {
+  let uploadedUrl = "";
+  let providerInput = "";
   let submittedPrompt = "";
   const handler = createGenerateImagePartHandler({
     ...baseDeps,
+    uploadReferenceToProvider: (url: string) => {
+      uploadedUrl = url;
+      return Promise.resolve("file_reference_1");
+    },
     createImageToImage: (input: { input: string; prompt: string }) => {
+      providerInput = input.input;
       submittedPrompt = input.prompt;
       return Promise.resolve("task-part-1");
     },
@@ -95,6 +103,8 @@ Deno.test("generate-image-part builds authoritative prompt and creates job", asy
 
   assertEquals(response.status, 202);
   assertEquals(body, { job_id: "job-part-1" });
+  assertEquals(uploadedUrl, "https://signed.test/reference.png");
+  assertEquals(providerInput, "file_reference_1");
   assertStringIncludes(submittedPrompt, "Bandaged hospital patient");
   assertStringIncludes(submittedPrompt, "Head");
   assertStringIncludes(submittedPrompt, "Keep exact bandage pattern");
