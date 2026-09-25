@@ -7,6 +7,7 @@ import 'src/config/app_config.dart';
 import 'src/core/analytics/analytics.dart';
 import 'src/core/analytics/posthog_analytics.dart';
 import 'src/core/routing/app_router.dart';
+import 'src/data/local/tripo_credential_repository.dart';
 import 'src/data/supabase/generation_gateway.dart';
 import 'src/data/supabase/project_repository.dart';
 import 'src/data/supabase/reference_image_repository.dart';
@@ -33,6 +34,9 @@ Future<void> main() async {
     );
 
     final client = Supabase.instance.client;
+    final tripoCredentialRepository = SecureTripoCredentialRepository(
+      const FlutterSecureKeyValueStore(),
+    );
     await SessionBootstrapper(
       SupabaseAuthPort(client),
     ).ensureSession();
@@ -55,6 +59,7 @@ Future<void> main() async {
         generationGateway: DefaultGenerationGateway(
           SupabaseFunctionInvoker(client),
           jobDataSource: SupabaseGenerationJobDataSource(client),
+          credentialProvider: tripoCredentialRepository,
         ),
         currentUserId: () => requireCurrentSupabaseUserId(client),
       ),
