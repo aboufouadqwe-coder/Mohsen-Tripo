@@ -73,6 +73,24 @@ void main() {
     );
   });
 
+  test('existing part prompt can be edited without changing stable key', () {
+    final controller = TemplateEditorController(
+      initialParts: BuiltinTemplates.characterParts.parts,
+      newKey: () => 'unused',
+    );
+
+    final updated = controller.updatePart(
+      key: 'head',
+      label: 'Head close-up',
+      promptFragment: 'Use my exact custom head prompt.',
+    );
+
+    expect(updated, isTrue);
+    final head = controller.parts.singleWhere((part) => part.key == 'head');
+    expect(head.label, 'Head close-up');
+    expect(head.promptFragment, 'Use my exact custom head prompt.');
+  });
+
   test('reorder changes presentation order but preserves stable keys', () {
     final controller = TemplateEditorController(
       initialParts: BuiltinTemplates.characterParts.parts,
