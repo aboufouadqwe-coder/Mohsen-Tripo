@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mohsen_tripo/src/data/supabase/generation_gateway.dart';
 import 'package:mohsen_tripo/src/domain/assets/asset_result.dart';
 import 'package:mohsen_tripo/src/domain/generation/generation_job.dart';
+import 'package:mohsen_tripo/src/domain/generation/model_generation_settings.dart';
 import 'package:mohsen_tripo/src/features/results/model_generation_controller.dart';
 
 final class FakeModelGateway implements GenerationGateway {
@@ -11,7 +12,10 @@ final class FakeModelGateway implements GenerationGateway {
   String? lastAssetResultId;
 
   @override
-  Future<String> generateModel(String assetResultId) async {
+  Future<String> generateModel(
+    String assetResultId, {
+    ModelGenerationSettings settings = const ModelGenerationSettings(),
+  }) async {
     modelCalls += 1;
     lastAssetResultId = assetResultId;
     return 'model-job-$modelCalls';
