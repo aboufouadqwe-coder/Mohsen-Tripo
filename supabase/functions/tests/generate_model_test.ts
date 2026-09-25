@@ -169,3 +169,66 @@ Deno.test("generate-model rejects face limit outside selected mode", async () =>
   const body = await response.json();
   assertEquals(body.error.code, "invalid_face_limit");
 });
+
+
+Deno.test("generate-model accepts an owned direct model input path", async () => {
+  let signedPath = "";
+  let uploadedUrl = "";
+  let providerInput = "";
+
+  const handler = createGenerateModelHandler({
+    ...baseDeps,
+    findOwnedProject: (_userId: string, projectId: string) =>
+      Promise.resolve(projectId === "project-1" ? { id: projectId } : null),
+    signReferenceImageUrl: (path: string) => {
+      signedPath = path;
+      return Promise.resolve("https://signed.test/model-input.png");
+    },
+    uploadImageToProvider: (
+      _apiKey: string,
+      url: string,
+    ) => {
+      uploadedUrl = url;
+      return Promise.resolve("file_token_direct_1");
+    },
+    createImageToModel: (_apiKey: string, input) => {
+      providerInput = input.input;
+      return Promise.resolve("task-model-direct");
+    },
+  });
+
+  const response = await handler(
+    request({
+      project_id: "project-1",
+      reference_storage_path:
+        "user-1/project-1/model-inputs/model-input-1.png",
+    }),
+  );
+
+  assertEquals(response.status, 202);
+  assertEquals(signedPath, "user-1/project-1/model-inputs/model-input-1.png");
+  assertEquals(uploadedUrl, "https://signed.test/model-input.png");
+  assertEquals(providerInput, "file_token_direct_1");
+});
+
+Deno.test("generate-model rejects direct model input outside owned project", async () => {
+  const handler = createGenerateModelHandler({
+    ...baseDeps,
+    findOwnedProject: (_userId: string, projectId: string) =>
+      Promise.resolve(projectId === "project-1" ? { id: projectId } : null),
+    signReferenceImageUrl: (_path: string) =>
+      Promise.resolve("https://signed.test/model-input.png"),
+    uploadImageToProvider: (_apiKey: string, _url: string) =>
+      Promise.resolve("file_token_direct_1"),
+  });
+
+  const response = await handler(
+    request({
+      project_id: "project-1",
+      reference_storage_path:
+        "user-2/project-1/model-inputs/model-input-1.png",
+    }),
+  );
+
+  assertEquals(response.status, 400);
+});
