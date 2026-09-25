@@ -23,6 +23,7 @@ const baseJob = {
   providerTaskId: "task-1",
   operation: "image_to_image",
   status: "running",
+  providerCredentialFingerprint: null,
 };
 
 const baseDeps = {
