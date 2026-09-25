@@ -283,7 +283,13 @@ final class _WorkspacePageState extends State<WorkspacePage> {
 
     final enabledParts = templateController.parts
         .where((part) => part.enabled)
-        .map((part) => part.key)
+        .map(
+          (part) => GenerationPartRequest(
+            key: part.key,
+            label: part.label,
+            prompt: part.promptFragment,
+          ),
+        )
         .toList(growable: false);
 
     if (enabledParts.isEmpty) {
@@ -296,11 +302,44 @@ final class _WorkspacePageState extends State<WorkspacePage> {
     unawaited(batchController.generateAll(parts: enabledParts));
   }
 
+  GenerationPartRequest? _requestForPart(String partKey) {
+    final controller = _templateController;
+    if (controller == null) return null;
+
+    for (final part in controller.parts) {
+      if (part.key == partKey) {
+        return GenerationPartRequest(
+          key: part.key,
+          label: part.label,
+          prompt: part.promptFragment,
+        );
+      }
+    }
+    return null;
+  }
+
+  void _generatePart(String partKey) {
+    final project = _project;
+    final batchController = _batchController;
+    final request = _requestForPart(partKey);
+    if (project?.referenceImagePath == null ||
+        batchController == null ||
+        request == null) {
+      return;
+    }
+    unawaited(batchController.generatePart(request));
+  }
+
   void _retryPart(String partKey) {
     final project = _project;
     final batchController = _batchController;
-    if (project?.referenceImagePath == null || batchController == null) return;
-    unawaited(batchController.regeneratePart(partKey));
+    final request = _requestForPart(partKey);
+    if (project?.referenceImagePath == null ||
+        batchController == null ||
+        request == null) {
+      return;
+    }
+    unawaited(batchController.regeneratePart(request));
   }
 
   Future<void> _generateModel(AssetResult asset) async {
@@ -390,6 +429,8 @@ final class _WorkspacePageState extends State<WorkspacePage> {
               controller: _templateController!,
               generationState: batchController?.state ?? const {},
               onRetry: project.referenceImagePath == null ? null : _retryPart,
+              onGenerate:
+                  project.referenceImagePath == null ? null : _generatePart,
             ),
             const SizedBox(height: 24),
             ResultsGallery(
