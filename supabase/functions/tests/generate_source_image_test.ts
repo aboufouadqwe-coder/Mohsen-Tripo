@@ -5,7 +5,7 @@ import { createGenerateSourceImageHandler } from "../generate-source-image/index
 const secret = "TRIPO_SUPER_SECRET";
 
 function request(body: unknown, authenticated = true): Request {
-  const headers = new Headers({ "content-type": "application/json" });
+  const headers = new Headers({ "content-type": "application/json" });\n  headers.set("x-tripo-api-key", "tsk_test_key_12345678901234567890");
   if (authenticated) headers.set("authorization", "Bearer user-token");
   return new Request("https://edge.test/generate-source-image", {
     method: "POST",
@@ -18,7 +18,7 @@ const baseDeps = {
   authenticate: (_token: string) => Promise.resolve("user-1"),
   findOwnedProject: (_userId: string, projectId: string) =>
     Promise.resolve(projectId === "project-1" ? { id: projectId } : null),
-  createTextToImage: (_prompt: string) => Promise.resolve("task-source-1"),
+  createTextToImage: (_apiKey: string, _prompt: string) => Promise.resolve("task-source-1"),
   insertJob: (_input: unknown) => Promise.resolve("job-source-1"),
 };
 
