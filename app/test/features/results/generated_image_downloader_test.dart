@@ -44,4 +44,44 @@ void main() {
     expect(savedMime, 'image/png');
     expect(savedBytes, Uint8List.fromList([1, 2, 3]));
   });
+
+  test('downloadModel saves GLB with stable Downloads filename', () async {
+    String? fetchedUrl;
+    String? savedName;
+    String? savedMime;
+    Uint8List? savedBytes;
+
+    final downloader = GeneratedImageDownloader(
+      fetcher: (url) async {
+        fetchedUrl = url;
+        return Uint8List.fromList([0x67, 0x6c, 0x54, 0x46]);
+      },
+      modelSaver: ({
+        required bytes,
+        required fileName,
+        required mimeType,
+      }) async {
+        savedBytes = bytes;
+        savedName = fileName;
+        savedMime = mimeType;
+      },
+    );
+
+    await downloader.downloadModel(
+      const AssetResult(
+        id: 'model-123',
+        projectId: 'project-1',
+        generationJobId: 'model-job-1',
+        storagePath: 'user/project/model.glb',
+        mimeType: 'model/gltf-binary',
+      ),
+      'https://signed.test/model.glb',
+    );
+
+    expect(fetchedUrl, 'https://signed.test/model.glb');
+    expect(savedName, 'Mohsen-Tripo-model-123.glb');
+    expect(savedMime, 'model/gltf-binary');
+    expect(savedBytes, Uint8List.fromList([0x67, 0x6c, 0x54, 0x46]));
+  });
+
 }
