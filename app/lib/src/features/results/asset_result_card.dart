@@ -56,6 +56,14 @@ final class AssetResultCard extends StatelessWidget {
     };
   }
 
+  String _formatDuration(Duration duration) {
+    final totalSeconds = duration.inSeconds;
+    final minutes = totalSeconds ~/ 60;
+    final seconds = totalSeconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:'
+        '${seconds.toString().padLeft(2, '0')}';
+  }
+
   String _title() {
     final part = entry.job.partKey;
     if (part != null && part.isNotEmpty) return part;
@@ -124,6 +132,13 @@ final class AssetResultCard extends StatelessWidget {
                 Text(_statusLabel(entry.job.status)),
               ],
             ),
+            if (entry.job.duration != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                'مدة التوليد: ${_formatDuration(entry.job.duration!)}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
             if (signedImageUrl != null) ...[
               const SizedBox(height: 12),
               (imagePreviewBuilder ?? _defaultPreview)(
