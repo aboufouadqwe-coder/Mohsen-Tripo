@@ -225,7 +225,7 @@ void main() {
   });
 
 
-  testWidgets('successful GLB result renders an interactive model surface',
+  testWidgets('successful GLB result renders and downloads the model',
       (tester) async {
     final asset = modelAsset('model-asset-1', 'model-job-1');
     final repository = FakeResultsRepository([
@@ -242,6 +242,9 @@ void main() {
       ),
     ]);
 
+    String? downloadedAssetId;
+    String? downloadedUrl;
+
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -249,6 +252,10 @@ void main() {
             projectId: 'project-1',
             repository: repository,
             onGenerateModel: (_) async {},
+            onDownloadModel: (selected, url) async {
+              downloadedAssetId = selected.id;
+              downloadedUrl = url;
+            },
             modelPreviewBuilder: (context, url) => Text('model-viewer:$url'),
           ),
         ),
@@ -262,6 +269,13 @@ void main() {
     );
     expect(find.text('نموذج 3D'), findsWidgets);
     expect(find.textContaining('اسحب لتدوير المجسم'), findsOneWidget);
+    expect(find.text('تنزيل المجسم'), findsOneWidget);
+
+    await tester.tap(find.text('تنزيل المجسم'));
+    await tester.pump();
+
+    expect(downloadedAssetId, 'model-asset-1');
+    expect(downloadedUrl, 'https://signed.test/model.glb');
   });
 
 }
