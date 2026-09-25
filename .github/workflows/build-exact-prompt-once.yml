@@ -1,4 +1,4 @@
-name: Build exact-prompt APK once
+name: Verify and release exact-prompt APK
 
 on:
   push:
@@ -7,37 +7,67 @@ on:
     paths:
       - .github/workflows/build-exact-prompt-once.yml
 
+permissions:
+  contents: write
+
 jobs:
-  build:
+  verify-build-release:
     runs-on: ubuntu-latest
     env:
       SUPABASE_URL: https://zzsjejluvufjtaxsqjme.supabase.co
       SUPABASE_PUBLISHABLE_KEY: sb_publishable_nL_A-yNI-RIJMEHkna3cdg_DZ6pBAUq
-    defaults:
-      run:
-        working-directory: app
     steps:
       - uses: actions/checkout@v5
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Run Edge Function contract tests
+        working-directory: supabase
+        run: deno task test
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: 3.47.0
           channel: stable
           cache: true
-      - name: Resolve dependencies
+
+      - name: Resolve Flutter dependencies
+        working-directory: app
         run: flutter pub get
-      - name: Analyze
+
+      - name: Analyze Flutter
+        working-directory: app
         run: flutter analyze
-      - name: Test
+
+      - name: Test Flutter
+        working-directory: app
         run: flutter test
+
       - name: Build release APK
+        working-directory: app
         run: |
           flutter build apk --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
-      - name: Upload release APK
+
+      - name: Upload release APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: mohsen-tripo-exact-prompt-fix
           path: app/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
-          retention-days: 3
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="android-mvp-exact-prompt-${GITHUB_SHA::7}"
+          cp app/build/app/outputs/flutter-apk/app-release.apk /tmp/Mohsen-Tripo-exact-prompt-fix.apk
+          gh release create "$TAG" /tmp/Mohsen-Tripo-exact-prompt-fix.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Mohsen-Tripo Exact Prompt Fix" \
+            --notes "Android release built from feature/android-mvp. Includes Custom Prompt -> Generate this part flow and exact part_prompt forwarding to Supabase."
