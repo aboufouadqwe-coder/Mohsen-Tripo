@@ -28,13 +28,28 @@ final class JobPollingService {
   final PollingDelay _delay;
   bool _disposed = false;
 
-  Future<GenerationJob> pollUntilTerminal(String jobId) async {
+  Future<GenerationJob> pollUntilTerminal(String jobId) {
+    return _poll(jobId);
+  }
+
+  Future<GenerationJob> pollUntilTerminalWithUpdates(
+    String jobId,
+    void Function(GenerationJob job) onUpdate,
+  ) {
+    return _poll(jobId, onUpdate: onUpdate);
+  }
+
+  Future<GenerationJob> _poll(
+    String jobId, {
+    void Function(GenerationJob job)? onUpdate,
+  }) async {
     var intervalIndex = 0;
 
     while (true) {
       _throwIfDisposed();
 
       final job = await gateway.refreshJob(jobId);
+      onUpdate?.call(job);
       if (job.isTerminal) return job;
 
       final interval = _intervals[
