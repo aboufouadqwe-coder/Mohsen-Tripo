@@ -1,4 +1,4 @@
-name: Verify and release 3D mesh controls APK
+name: Verify and release parts-balance fix APK
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: android-mvp-3d-mesh-${{ github.ref }}
+  group: android-mvp-parts-balance-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -61,7 +61,7 @@ jobs:
       - name: Upload release APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mohsen-tripo-3d-mesh-controls
+          name: mohsen-tripo-parts-balance-fix
           path: app/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           retention-days: 30
@@ -70,10 +70,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="android-mvp-3d-mesh-${GITHUB_SHA::7}"
-          cp app/build/app/outputs/flutter-apk/app-release.apk /tmp/Mohsen-Tripo-3d-mesh-controls.apk
-          gh release create "$TAG" /tmp/Mohsen-Tripo-3d-mesh-controls.apk \
+          TAG="android-mvp-parts-balance-${GITHUB_SHA::7}"
+          cp app/build/app/outputs/flutter-apk/app-release.apk /tmp/Mohsen-Tripo-parts-balance-fix.apk
+          gh release create "$TAG" /tmp/Mohsen-Tripo-parts-balance-fix.apk \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Mohsen-Tripo 3D Mesh Controls" \
-            --notes "Adds Low Poly / Standard / High presets, Adaptive / Triangle / Quad topology, polygon-count controls, GLB/FBX handling, and preserves existing 3D viewer/download fixes."
+            --title "Mohsen-Tripo Parts + Balance Fix" \
+            --notes "Fixes image-part generation by uploading private references to Tripo file tokens, adds visible Tripo credit balance, and preserves 3D mesh controls, lazy model viewing, and native model download fixes."
