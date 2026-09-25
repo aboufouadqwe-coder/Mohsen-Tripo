@@ -13,11 +13,13 @@ final class GenerationPartRequest {
     required this.key,
     required this.label,
     required this.prompt,
+    this.referenceStoragePath,
   });
 
   final String key;
   final String label;
   final String prompt;
+  final String? referenceStoragePath;
 }
 
 final class GenerationBatchController extends ChangeNotifier {
@@ -56,7 +58,12 @@ final class GenerationBatchController extends ChangeNotifier {
       final prompt = rawPart.prompt.trim();
       if (key.isEmpty || label.isEmpty || prompt.isEmpty || !seen.add(key)) continue;
       normalizedParts.add(
-        GenerationPartRequest(key: key, label: label, prompt: prompt),
+        GenerationPartRequest(
+          key: key,
+          label: label,
+          prompt: prompt,
+          referenceStoragePath: rawPart.referenceStoragePath,
+        ),
       );
     }
 
@@ -140,6 +147,7 @@ final class GenerationBatchController extends ChangeNotifier {
         partKey: partKey,
         partLabel: part.label.trim(),
         partPrompt: part.prompt.trim(),
+        referenceStoragePath: part.referenceStoragePath,
       );
       if (_disposed) return null;
 
