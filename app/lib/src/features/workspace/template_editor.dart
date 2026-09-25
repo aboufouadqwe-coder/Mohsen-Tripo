@@ -18,11 +18,15 @@ final class EditableTemplatePart {
   final String promptFragment;
   final bool enabled;
 
-  EditableTemplatePart copyWith({bool? enabled}) {
+  EditableTemplatePart copyWith({
+    String? label,
+    String? promptFragment,
+    bool? enabled,
+  }) {
     return EditableTemplatePart(
       key: key,
-      label: label,
-      promptFragment: promptFragment,
+      label: label ?? this.label,
+      promptFragment: promptFragment ?? this.promptFragment,
       enabled: enabled ?? this.enabled,
     );
   }
@@ -57,6 +61,26 @@ final class TemplateEditorController extends ChangeNotifier {
     if (index < 0) return;
     _parts[index] = _parts[index].copyWith(enabled: enabled);
     notifyListeners();
+  }
+
+  bool updatePart({
+    required String key,
+    required String label,
+    required String promptFragment,
+  }) {
+    final index = _parts.indexWhere((part) => part.key == key);
+    final normalizedLabel = label.trim();
+    final normalizedPrompt = promptFragment.trim();
+    if (index < 0 || normalizedLabel.isEmpty || normalizedPrompt.isEmpty) {
+      return false;
+    }
+
+    _parts[index] = _parts[index].copyWith(
+      label: normalizedLabel,
+      promptFragment: normalizedPrompt,
+    );
+    notifyListeners();
+    return true;
   }
 
   bool addCustomPart({
@@ -100,11 +124,13 @@ final class TemplateEditor extends StatefulWidget {
     required this.controller,
     this.generationState = const {},
     this.onRetry,
+    this.onGenerate,
   });
 
   final TemplateEditorController controller;
   final Map<String, GenerationPartState> generationState;
   final ValueChanged<String>? onRetry;
+  final ValueChanged<String>? onGenerate;
 
   @override
   State<TemplateEditor> createState() => _TemplateEditorState();
@@ -142,13 +168,70 @@ final class _TemplateEditorState extends State<TemplateEditor> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _editPart(EditableTemplatePart part) async {
+    final labelController = TextEditingController(text: part.label);
+    final promptController = TextEditingController(text: part.promptFragment);
+
+    final shouldSave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('تعديل الجزء والـPrompt'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: labelController,
+                decoration: const InputDecoration(
+                  labelText: 'اسم الجزء',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: promptController,
+                minLines: 4,
+                maxLines: 8,
+                decoration: const InputDecoration(
+                  labelText: 'Prompt — سيُرسل كما كتبته',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('حفظ'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldSave == true) {
+      widget.controller.updatePart(
+        key: part.key,
+        label: labelController.text,
+        promptFragment: promptController.text,
+      );
+    }
+
+    labelController.dispose();
+    promptController.dispose();
+  }
+
   void _addPart() {
     final added = widget.controller.addCustomPart(
       label: _labelController.text,
       promptFragment: _promptController.text,
     );
     if (!added) {
-      setState(() => _error = 'اكتب اسم الجزء ووصفه.');
+      setState(() => _error = 'اكتب اسم الجزء والـPrompt.');
       return;
     }
 
@@ -183,6 +266,10 @@ final class _TemplateEditorState extends State<TemplateEditor> {
               onRetry: widget.onRetry == null
                   ? null
                   : () => widget.onRetry!(part.key),
+              onGenerate: widget.onGenerate == null
+                  ? null
+                  : () => widget.onGenerate!(part.key),
+              onEdit: () => _editPart(part),
               onEnabledChanged: (enabled) {
                 widget.controller.setEnabled(part.key, enabled);
               },
@@ -193,8 +280,8 @@ final class _TemplateEditorState extends State<TemplateEditor> {
         TextField(
           controller: _labelController,
           decoration: const InputDecoration(
-            labelText: 'جزء مخصص',
-            hintText: 'مثال: ضمادات الرأس',
+            labelText: 'اسم الجزء',
+            hintText: 'مثال: Arm with shoulder',
             border: OutlineInputBorder(),
           ),
         ),
@@ -204,7 +291,8 @@ final class _TemplateEditorState extends State<TemplateEditor> {
           minLines: 2,
           maxLines: 4,
           decoration: const InputDecoration(
-            labelText: 'تعليمات الجزء',
+            labelText: 'Prompt الجزء — سيُرسل كما كتبته',
+            hintText: 'اكتب البرومبت كاملًا هنا',
             border: OutlineInputBorder(),
           ),
         ),
