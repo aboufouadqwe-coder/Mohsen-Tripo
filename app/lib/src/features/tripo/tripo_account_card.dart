@@ -184,17 +184,18 @@ final class _TripoAccountCardState extends State<TripoAccountCard>
                 style: Theme.of(context).textTheme.labelLarge,
               ),
               ...controller.saved.map(
-                (credential) => RadioListTile<String>(
-                  value: credential.fingerprint,
-                  groupValue: active?.fingerprint,
+                (credential) => ListTile(
+                  leading: Icon(
+                    credential.fingerprint == active?.fingerprint
+                        ? Icons.check_circle
+                        : Icons.circle_outlined,
+                  ),
                   title: Text(credential.name),
                   subtitle: Text(credential.maskedKey),
-                  onChanged: controller.busy
+                  onTap: controller.busy
                       ? null
-                      : (value) {
-                          if (value != null) controller.activate(value);
-                        },
-                  secondary: IconButton(
+                      : () => controller.activate(credential.fingerprint),
+                  trailing: IconButton(
                     tooltip: 'حذف من هذا الجهاز',
                     onPressed: controller.busy
                         ? null
