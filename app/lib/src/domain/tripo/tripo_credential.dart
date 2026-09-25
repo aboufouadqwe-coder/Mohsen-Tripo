@@ -21,7 +21,7 @@ final class TripoCredential {
         ? normalized
         : normalized.substring(normalized.length - 4);
     final prefix = normalized.startsWith('tsk_') ? 'tsk_' : '';
-    return '${prefix}••••••$suffix';
+    return '$prefix••••••$suffix';
   }
 
   TripoCredential copyWith({
