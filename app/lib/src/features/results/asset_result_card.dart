@@ -8,12 +8,18 @@ typedef ResultImagePreviewBuilder = Widget Function(
   String url,
 );
 
+typedef ResultImageDownload = Future<void> Function(
+  AssetResult asset,
+  String signedUrl,
+);
+
 final class AssetResultCard extends StatelessWidget {
   const AssetResultCard({
     super.key,
     required this.entry,
     this.onGenerateModel,
     this.imagePreviewBuilder,
+    this.onDownloadImage,
     this.modelGenerationBusy = false,
     this.activeModelAssetResultId,
   });
@@ -21,6 +27,7 @@ final class AssetResultCard extends StatelessWidget {
   final ResultHistoryEntry entry;
   final Future<void> Function(AssetResult asset)? onGenerateModel;
   final ResultImagePreviewBuilder? imagePreviewBuilder;
+  final ResultImageDownload? onDownloadImage;
   final bool modelGenerationBusy;
   final String? activeModelAssetResultId;
 
@@ -71,6 +78,8 @@ final class AssetResultCard extends StatelessWidget {
         ? imageAsset
         : null;
     final canGenerateModel = usableImage != null && onGenerateModel != null;
+    final canDownloadImage =
+        imageAsset != null && signedImageUrl != null && onDownloadImage != null;
     final isActiveAsset = activeModelAssetResultId != null &&
         activeModelAssetResultId == imageAsset?.id;
 
@@ -96,6 +105,16 @@ final class AssetResultCard extends StatelessWidget {
               (imagePreviewBuilder ?? _defaultPreview)(
                 context,
                 signedImageUrl,
+              ),
+            ],
+            if (canDownloadImage) ...[
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  await onDownloadImage!(imageAsset, signedImageUrl);
+                },
+                icon: const Icon(Icons.download),
+                label: const Text('تنزيل الصورة'),
               ),
             ],
             if (entry.modelAsset != null) ...[
