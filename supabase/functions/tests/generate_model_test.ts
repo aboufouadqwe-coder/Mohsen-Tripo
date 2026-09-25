@@ -5,7 +5,8 @@ import { createGenerateModelHandler } from "../generate-model/index.ts";
 const secret = "TRIPO_SUPER_SECRET";
 
 function request(body: unknown, authenticated = true): Request {
-  const headers = new Headers({ "content-type": "application/json" });\n  headers.set("x-tripo-api-key", "tsk_test_key_12345678901234567890");
+  const headers = new Headers({ "content-type": "application/json" });
+  headers.set("x-tripo-api-key", "tsk_test_key_12345678901234567890");
   if (authenticated) headers.set("authorization", "Bearer user-token");
   return new Request("https://edge.test/generate-model", {
     method: "POST",
