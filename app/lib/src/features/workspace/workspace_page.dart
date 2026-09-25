@@ -13,6 +13,7 @@ import '../../domain/generation/generation_job.dart';
 import '../../domain/projects/project.dart';
 import '../../domain/templates/asset_template.dart';
 import '../../domain/templates/builtin_templates.dart';
+import '../results/generated_image_downloader.dart';
 import '../results/model_generation_controller.dart';
 import '../results/results_gallery.dart';
 import 'generation_batch_controller.dart';
@@ -57,6 +58,8 @@ final class _WorkspacePageState extends State<WorkspacePage> {
   int _resultsVersion = 0;
   int _lastBatchTerminalCount = 0;
   String? _lastModelTerminalJobId;
+  final GeneratedImageDownloader _imageDownloader =
+      const GeneratedImageDownloader();
 
   @override
   void initState() {
@@ -184,7 +187,13 @@ final class _WorkspacePageState extends State<WorkspacePage> {
         _loading = false;
       });
 
-      unawaited(_resumeActiveJobs(project.id, batchController));
+      unawaited(
+        _resumeActiveJobs(
+          project.id,
+          batchController,
+          modelController,
+        ),
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -197,6 +206,7 @@ final class _WorkspacePageState extends State<WorkspacePage> {
   Future<void> _resumeActiveJobs(
     String projectId,
     GenerationBatchController controller,
+    ModelGenerationController modelController,
   ) async {
     final gateway = widget.generationGateway;
     if (gateway is! ActiveGenerationJobsGateway) return;
@@ -205,7 +215,21 @@ final class _WorkspacePageState extends State<WorkspacePage> {
       final activeGateway = gateway as ActiveGenerationJobsGateway;
       final jobs = await activeGateway.listActiveJobs(projectId);
       if (!mounted) return;
-      await controller.resumeJobs(jobs);
+
+      final partJobs = jobs
+          .where((job) => job.operation == GenerationOperation.imageToImage)
+          .toList(growable: false);
+      final modelJobs = jobs
+          .where((job) => job.operation == GenerationOperation.imageToModel)
+          .toList(growable: false);
+
+      final futures = <Future<void>>[
+        controller.resumeJobs(partJobs),
+      ];
+      if (modelJobs.isNotEmpty) {
+        futures.add(modelController.resumeJob(modelJobs.last));
+      }
+      await Future.wait(futures);
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -348,6 +372,24 @@ final class _WorkspacePageState extends State<WorkspacePage> {
     await controller.generateFromImage(asset);
   }
 
+  Future<void> _downloadImage(
+    AssetResult asset,
+    String signedUrl,
+  ) async {
+    try {
+      await _imageDownloader.download(asset, signedUrl);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم حفظ الصورة في معرض الهاتف.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر تنزيل الصورة إلى الهاتف.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -438,6 +480,7 @@ final class _WorkspacePageState extends State<WorkspacePage> {
               repository: widget.resultsRepository,
               refreshVersion: _resultsVersion,
               onGenerateModel: _generateModel,
+              onDownloadImage: _downloadImage,
               modelGenerationBusy: modelController?.isBusy ?? false,
               activeModelAssetResultId:
                   modelController?.activeAssetResultId,
