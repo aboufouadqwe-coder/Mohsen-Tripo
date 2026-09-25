@@ -158,4 +158,24 @@ void main() {
     expect(controller.parts.single.region, same(region));
   });
 
+
+  test('smart custom instructions are appended to the profile prompt', () {
+    final controller = TemplateEditorController(
+      initialParts: const [],
+      newKey: () => 'smart-custom-1',
+    );
+
+    final added = controller.addCustomPart(
+      label: 'bandaged neck',
+      promptFragment: 'Keep the exact dirty bandage pattern.',
+      promptMode: PartPromptMode.smart,
+    );
+
+    expect(added, isTrue);
+    final prompt = controller.parts.single.promptFragment;
+    expect(prompt, contains('clean isolated 3D-ready asset reference'));
+    expect(prompt, contains('Additional user requirement'));
+    expect(prompt, contains('Keep the exact dirty bandage pattern.'));
+  });
+
 }
