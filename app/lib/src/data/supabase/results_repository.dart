@@ -80,6 +80,8 @@ final class DefaultResultsRepository implements ResultsRepository {
     final providerTaskId = row['provider_task_id'];
     final errorCode = row['error_code'];
     final errorMessage = row['error_message'];
+    final createdAt = row['created_at'];
+    final completedAt = row['completed_at'];
 
     if (id is! String ||
         projectId is! String ||
@@ -90,7 +92,9 @@ final class DefaultResultsRepository implements ResultsRepository {
         (partKey != null && partKey is! String) ||
         (providerTaskId != null && providerTaskId is! String) ||
         (errorCode != null && errorCode is! String) ||
-        (errorMessage != null && errorMessage is! String)) {
+        (errorMessage != null && errorMessage is! String) ||
+        createdAt is! String ||
+        (completedAt != null && completedAt is! String)) {
       throw AppFailure.data();
     }
 
@@ -117,6 +121,9 @@ final class DefaultResultsRepository implements ResultsRepository {
       progress: progress.toDouble(),
       errorCode: errorCode as String?,
       errorMessage: errorMessage as String?,
+      createdAt: DateTime.tryParse(createdAt),
+      completedAt:
+          completedAt is String ? DateTime.tryParse(completedAt) : null,
     );
   }
 
