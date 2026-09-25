@@ -46,6 +46,7 @@ final class FakeBatchGateway implements GenerationGateway {
     String? partLabel,
     String? partPrompt,
     String? customInstructions,
+    String? referenceStoragePath,
   }) async {
     events.add('submit:$partKey');
     final next = (submitCountByPart[partKey] ?? 0) + 1;
