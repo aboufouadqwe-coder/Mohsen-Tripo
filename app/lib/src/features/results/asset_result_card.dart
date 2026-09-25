@@ -19,6 +19,11 @@ typedef ResultModelPreviewBuilder = Widget Function(
   String url,
 );
 
+typedef ResultModelDownload = Future<void> Function(
+  AssetResult asset,
+  String signedUrl,
+);
+
 final class AssetResultCard extends StatelessWidget {
   const AssetResultCard({
     super.key,
@@ -27,6 +32,7 @@ final class AssetResultCard extends StatelessWidget {
     this.imagePreviewBuilder,
     this.modelPreviewBuilder,
     this.onDownloadImage,
+    this.onDownloadModel,
     this.modelGenerationBusy = false,
     this.activeModelAssetResultId,
   });
@@ -36,6 +42,7 @@ final class AssetResultCard extends StatelessWidget {
   final ResultImagePreviewBuilder? imagePreviewBuilder;
   final ResultModelPreviewBuilder? modelPreviewBuilder;
   final ResultImageDownload? onDownloadImage;
+  final ResultModelDownload? onDownloadModel;
   final bool modelGenerationBusy;
   final String? activeModelAssetResultId;
 
@@ -108,6 +115,8 @@ final class AssetResultCard extends StatelessWidget {
     final canGenerateModel = usableImage != null && onGenerateModel != null;
     final canDownloadImage =
         imageAsset != null && signedImageUrl != null && onDownloadImage != null;
+    final canDownloadModel =
+        modelAsset != null && signedModelUrl != null && onDownloadModel != null;
     final isActiveAsset = activeModelAssetResultId != null &&
         activeModelAssetResultId == imageAsset?.id;
 
@@ -165,6 +174,16 @@ final class AssetResultCard extends StatelessWidget {
                   'اسحب لتدوير المجسم، واستخدم إصبعين للتكبير والتصغير.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
+                if (canDownloadModel) ...[
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      await onDownloadModel!(modelAsset, signedModelUrl);
+                    },
+                    icon: const Icon(Icons.download),
+                    label: const Text('تنزيل المجسم'),
+                  ),
+                ],
               ] else ...[
                 const SizedBox(height: 8),
                 const Text('تعذر تحميل رابط عرض المجسم.'),
