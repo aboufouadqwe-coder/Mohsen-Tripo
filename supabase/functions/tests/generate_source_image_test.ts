@@ -61,7 +61,7 @@ Deno.test("generate-source-image creates an async job", async () => {
   let submittedPrompt = "";
   const handler = createGenerateSourceImageHandler({
     ...baseDeps,
-    createTextToImage: (prompt: string) => {
+    createTextToImage: (_apiKey: string, prompt: string) => {
       submittedPrompt = prompt;
       return Promise.resolve("task-source-1");
     },
