@@ -76,6 +76,29 @@ void main() {
     });
   });
 
+  test('generateImagePart forwards cropped reference storage path', () async {
+    final invoker = FakeFunctionInvoker()
+      ..responses['generate-image-part'] = {'job_id': 'job-part'};
+    final gateway = DefaultGenerationGateway(invoker);
+
+    final jobId = await gateway.generateImagePart(
+      projectId: 'project-1',
+      partKey: 'head',
+      partLabel: 'Head Clean',
+      partPrompt: 'Generate only a clean bald head.',
+      referenceStoragePath: 'user-1/project-1/parts/head.png',
+    );
+
+    expect(jobId, 'job-part');
+    expect(invoker.lastBody, {
+      'project_id': 'project-1',
+      'part_key': 'head',
+      'part_label': 'Head Clean',
+      'part_prompt': 'Generate only a clean bald head.',
+      'reference_storage_path': 'user-1/project-1/parts/head.png',
+    });
+  });
+
   test('refreshJob maps provider-neutral job response', () async {
     final invoker = FakeFunctionInvoker()
       ..responses['refresh-generation-job'] = {
