@@ -38,6 +38,7 @@ const baseDeps = {
           provider: "tripo",
           providerTaskId: "task-image-1",
           operation: "image_to_image",
+          providerCredentialFingerprint: null,
         }
         : null,
     ),
