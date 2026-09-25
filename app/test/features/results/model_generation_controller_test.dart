@@ -47,6 +47,37 @@ final class FakeModelGateway implements GenerationGateway {
   Future<GenerationJob> refreshJob(String jobId) {
     throw UnimplementedError();
   }
+  @override
+  Future<String> generateModelFromReferencePath({
+    required String projectId,
+    required String referenceStoragePath,
+    ModelGenerationSettings settings = const ModelGenerationSettings(),
+  }) async {
+    modelCalls += 1;
+    lastAssetResultId = referenceStoragePath;
+    lastSettings = settings;
+    return 'model-job-$modelCalls';
+  }
+  test('direct reference path can start model generation', () async {
+    final gateway = FakeModelGateway();
+    final controller = ModelGenerationController(
+      gateway: gateway,
+      pollUntilTerminal: (jobId) async => completedModelJob(jobId),
+    );
+
+    await controller.generateFromReferencePath(
+      projectId: 'project-1',
+      referenceStoragePath:
+          'user-1/project-1/model-inputs/model-input-1.png',
+    );
+
+    expect(gateway.modelCalls, 1);
+    expect(
+      gateway.lastAssetResultId,
+      'user-1/project-1/model-inputs/model-input-1.png',
+    );
+    expect(controller.job?.status, GenerationStatus.success);
+  });
 }
 
 AssetResult asset({
