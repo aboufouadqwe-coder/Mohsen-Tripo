@@ -49,7 +49,7 @@ final class ModelGenerationSettings {
   int? get validatedFaceLimit {
     if (topology == ModelTopology.adaptive) return null;
     final value = faceLimit ?? defaultFaceLimitFor(preset, topology);
-    return value.clamp(minFaceLimit, maxFaceLimit);
+    return value.clamp(minFaceLimit, maxFaceLimit).toInt();
   }
 
   bool get mayProduceFbx => topology == ModelTopology.quads;
