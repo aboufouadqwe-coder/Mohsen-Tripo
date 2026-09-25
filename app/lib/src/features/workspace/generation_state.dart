@@ -20,6 +20,8 @@ final class GenerationPartState {
     this.mimeType,
     this.errorCode,
     this.errorMessage,
+    this.startedAt,
+    this.finishedAt,
   });
 
   final String partKey;
@@ -31,6 +33,16 @@ final class GenerationPartState {
   final String? mimeType;
   final String? errorCode;
   final String? errorMessage;
+  final DateTime? startedAt;
+  final DateTime? finishedAt;
+
+  Duration? get elapsed {
+    final start = startedAt;
+    if (start == null) return null;
+    final end = finishedAt ?? DateTime.now();
+    if (end.isBefore(start)) return null;
+    return end.difference(start);
+  }
 
   bool get isSuccess => phase == GenerationPartPhase.success;
 
@@ -43,27 +55,34 @@ final class GenerationPartState {
       phase == GenerationPartPhase.queued ||
       phase == GenerationPartPhase.running;
 
-  factory GenerationPartState.submitting(String partKey) {
+  factory GenerationPartState.submitting(
+    String partKey, {
+    DateTime? startedAt,
+  }) {
     return GenerationPartState(
       partKey: partKey,
       phase: GenerationPartPhase.submitting,
+      startedAt: startedAt ?? DateTime.now(),
     );
   }
 
   factory GenerationPartState.queued(
     String partKey,
-    String jobId,
-  ) {
+    String jobId, {
+    DateTime? startedAt,
+  }) {
     return GenerationPartState(
       partKey: partKey,
       phase: GenerationPartPhase.queued,
       jobId: jobId,
+      startedAt: startedAt,
     );
   }
 
   factory GenerationPartState.failedSubmission(
     String partKey, {
     String errorCode = 'submission_failed',
+    DateTime? startedAt,
   }) {
     return GenerationPartState(
       partKey: partKey,
@@ -71,12 +90,15 @@ final class GenerationPartState {
       progress: 1,
       errorCode: errorCode,
       errorMessage: 'Generation job could not be submitted.',
+      startedAt: startedAt,
+      finishedAt: DateTime.now(),
     );
   }
 
   factory GenerationPartState.fromJob(
     GenerationJob job, {
     String? submittedJobId,
+    DateTime? startedAt,
   }) {
     final partKey = job.partKey;
     if (partKey == null || partKey.trim().isEmpty) {
@@ -99,6 +121,9 @@ final class GenerationPartState {
       mimeType: job.mimeType,
       errorCode: job.errorCode,
       errorMessage: job.errorMessage,
+      startedAt: job.createdAt ?? startedAt,
+      finishedAt: job.completedAt ??
+          (job.isTerminal ? DateTime.now() : null),
     );
   }
 }
