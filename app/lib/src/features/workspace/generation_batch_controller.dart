@@ -8,6 +8,18 @@ import '../../domain/generation/generation_job.dart';
 import 'generation_state.dart';
 import 'job_polling_service.dart';
 
+final class GenerationPartRequest {
+  const GenerationPartRequest({
+    required this.key,
+    required this.label,
+    required this.prompt,
+  });
+
+  final String key;
+  final String label;
+  final String prompt;
+}
+
 final class GenerationBatchController extends ChangeNotifier {
   GenerationBatchController({
     required this.gateway,
@@ -33,22 +45,26 @@ final class GenerationBatchController extends ChangeNotifier {
   }
 
   Future<void> generateAll({
-    required Iterable<String> parts,
+    required Iterable<GenerationPartRequest> parts,
   }) async {
-    final normalizedParts = <String>[];
+    final normalizedParts = <GenerationPartRequest>[];
     final seen = <String>{};
 
     for (final rawPart in parts) {
-      final part = rawPart.trim();
-      if (part.isEmpty || !seen.add(part)) continue;
-      normalizedParts.add(part);
+      final key = rawPart.key.trim();
+      final label = rawPart.label.trim();
+      final prompt = rawPart.prompt.trim();
+      if (key.isEmpty || label.isEmpty || prompt.isEmpty || !seen.add(key)) continue;
+      normalizedParts.add(
+        GenerationPartRequest(key: key, label: label, prompt: prompt),
+      );
     }
 
     final submitted = <String, String>{};
-    for (final partKey in normalizedParts) {
+    for (final part in normalizedParts) {
       if (_disposed) return;
-      final jobId = await _submitPart(partKey);
-      if (jobId != null) submitted[partKey] = jobId;
+      final jobId = await _submitPart(part);
+      if (jobId != null) submitted[part.key] = jobId;
     }
 
     await Future.wait(
@@ -59,8 +75,21 @@ final class GenerationBatchController extends ChangeNotifier {
     );
   }
 
-  Future<void> regeneratePart(String partKey) async {
-    final normalized = partKey.trim();
+  Future<void> generatePart(GenerationPartRequest part) async {
+    if (_disposed ||
+        part.key.trim().isEmpty ||
+        part.label.trim().isEmpty ||
+        part.prompt.trim().isEmpty) {
+      return;
+    }
+
+    final jobId = await _submitPart(part);
+    if (jobId == null || _disposed) return;
+    await _pollPart(part.key, jobId);
+  }
+
+  Future<void> regeneratePart(GenerationPartRequest part) async {
+    final normalized = part.key.trim();
     if (normalized.isEmpty || _disposed) return;
 
     _capture(
@@ -68,7 +97,7 @@ final class GenerationBatchController extends ChangeNotifier {
       {'part_key': normalized},
     );
 
-    final jobId = await _submitPart(normalized);
+    final jobId = await _submitPart(part);
     if (jobId == null || _disposed) return;
 
     await _pollPart(normalized, jobId);
@@ -97,7 +126,8 @@ final class GenerationBatchController extends ChangeNotifier {
     );
   }
 
-  Future<String?> _submitPart(String partKey) async {
+  Future<String?> _submitPart(GenerationPartRequest part) async {
+    final partKey = part.key.trim();
     _state[partKey] = GenerationPartState.submitting(partKey);
     _notify();
 
@@ -105,6 +135,8 @@ final class GenerationBatchController extends ChangeNotifier {
       final jobId = await gateway.generateImagePart(
         projectId: projectId,
         partKey: partKey,
+        partLabel: part.label.trim(),
+        partPrompt: part.prompt.trim(),
       );
       if (_disposed) return null;
 
