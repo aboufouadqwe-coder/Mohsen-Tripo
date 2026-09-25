@@ -10,6 +10,7 @@ import 'package:mohsen_tripo/src/features/results/model_generation_controller.da
 final class FakeModelGateway implements GenerationGateway {
   int modelCalls = 0;
   String? lastAssetResultId;
+  ModelGenerationSettings? lastSettings;
 
   @override
   Future<String> generateModel(
@@ -18,6 +19,7 @@ final class FakeModelGateway implements GenerationGateway {
   }) async {
     modelCalls += 1;
     lastAssetResultId = assetResultId;
+    lastSettings = settings;
     return 'model-job-$modelCalls';
   }
 
@@ -83,10 +85,17 @@ void main() {
 
     await controller.generateFromImage(
       asset(id: 'image-asset-7', mimeType: 'image/png'),
+      settings: const ModelGenerationSettings(
+        preset: ModelQualityPreset.high,
+        topology: ModelTopology.triangles,
+        faceLimit: 750000,
+      ),
     );
 
     expect(gateway.modelCalls, 1);
     expect(gateway.lastAssetResultId, 'image-asset-7');
+    expect(gateway.lastSettings?.preset, ModelQualityPreset.high);
+    expect(gateway.lastSettings?.faceLimit, 750000);
     expect(controller.job?.status, GenerationStatus.success);
     expect(controller.job?.operation, GenerationOperation.imageToModel);
   });
