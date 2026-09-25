@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../domain/smart_parts/smart_part.dart';
 import 'generation_state.dart';
 
 final class PartRequestTile extends StatelessWidget {
@@ -15,6 +16,10 @@ final class PartRequestTile extends StatelessWidget {
     this.onRetry,
     this.onGenerate,
     this.onEdit,
+    this.promptMode = PartPromptMode.exact,
+    this.hasRegion = false,
+    this.onSelectRegion,
+    this.onRebuildSmartPrompt,
   });
 
   final String label;
@@ -25,6 +30,10 @@ final class PartRequestTile extends StatelessWidget {
   final VoidCallback? onRetry;
   final VoidCallback? onGenerate;
   final VoidCallback? onEdit;
+  final PartPromptMode promptMode;
+  final bool hasRegion;
+  final VoidCallback? onSelectRegion;
+  final VoidCallback? onRebuildSmartPrompt;
 
   String _statusLabel(GenerationPartState state) {
     return switch (state.phase) {
@@ -62,23 +71,62 @@ final class PartRequestTile extends StatelessWidget {
             secondary: const Icon(Icons.drag_handle),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
+                Chip(
+                  avatar: Icon(
+                    promptMode == PartPromptMode.smart
+                        ? Icons.auto_awesome
+                        : Icons.text_fields,
+                    size: 16,
+                  ),
+                  label: Text(
+                    promptMode == PartPromptMode.smart
+                        ? 'Smart Prompt'
+                        : 'Exact Prompt',
+                  ),
+                ),
+                if (hasRegion)
+                  const Chip(
+                    avatar: Icon(Icons.crop, size: 16),
+                    label: Text('منطقة محددة'),
+                  ),
                 TextButton.icon(
                   onPressed: onEdit,
                   icon: const Icon(Icons.edit_outlined),
                   label: const Text('تعديل Prompt'),
                 ),
-                const Spacer(),
-                FilledButton.tonalIcon(
-                  onPressed: enabled && state?.isActive != true
-                      ? onGenerate
-                      : null,
-                  icon: const Icon(Icons.play_arrow),
-                  label: const Text('توليد هذا الجزء'),
-                ),
+                if (promptMode == PartPromptMode.smart &&
+                    onRebuildSmartPrompt != null)
+                  TextButton.icon(
+                    onPressed: onRebuildSmartPrompt,
+                    icon: const Icon(Icons.auto_fix_high),
+                    label: const Text('إعادة بناء'),
+                  ),
+                if (onSelectRegion != null)
+                  TextButton.icon(
+                    onPressed: onSelectRegion,
+                    icon: const Icon(Icons.crop_free),
+                    label: Text(hasRegion ? 'تعديل المنطقة' : 'تحديد منطقة'),
+                  ),
               ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            child: Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: FilledButton.tonalIcon(
+                onPressed: enabled && state?.isActive != true
+                    ? onGenerate
+                    : null,
+                icon: const Icon(Icons.play_arrow),
+                label: const Text('توليد هذا الجزء'),
+              ),
             ),
           ),
           if (state != null)
