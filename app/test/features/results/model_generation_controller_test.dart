@@ -126,6 +126,38 @@ void main() {
     expect(controller.job?.status, GenerationStatus.success);
   });
 
+  test('3d controller exposes intermediate progress while polling', () async {
+    final gateway = FakeModelGateway();
+    final seen = <double>[];
+    late final ModelGenerationController controller;
+
+    controller = ModelGenerationController(
+      gateway: gateway,
+      pollUntilTerminal: (jobId) async => completedModelJob(jobId),
+      pollUntilTerminalWithUpdates: (jobId, onUpdate) async {
+        onUpdate(
+          GenerationJob(
+            id: jobId,
+            projectId: 'project-1',
+            provider: 'tripo',
+            operation: GenerationOperation.imageToModel,
+            status: GenerationStatus.running,
+            progress: 0.86,
+          ),
+        );
+        seen.add(controller.job?.progress ?? -1);
+        return completedModelJob(jobId);
+      },
+    );
+
+    await controller.generateFromImage(
+      asset(id: 'image-asset-progress', mimeType: 'image/png'),
+    );
+
+    expect(seen, [0.86]);
+    expect(controller.job?.progress, 1);
+  });
+
   test('active 3d job can be resumed without creating a second provider task',
       () async {
     final gateway = FakeModelGateway();
