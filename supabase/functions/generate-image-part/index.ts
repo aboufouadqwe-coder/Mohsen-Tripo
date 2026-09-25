@@ -100,11 +100,11 @@ export function createGenerateImagePartHandler(
       if (directPartLabel !== undefined && directPartPrompt !== undefined) {
         const label = directPartLabel.trim();
         const exactPrompt = directPartPrompt.trim();
-        if (label.length === 0 || exactPrompt.length === 0 || exactPrompt.length > 4000) {
+        if (label.length === 0 || exactPrompt.length === 0 || exactPrompt.length > 1800) {
           throw new HttpError(
             400,
             "invalid_prompt",
-            "Direct part label and prompt must be non-empty and within limits.",
+            "Direct part label and prompt must be non-empty and within Tripo's 1800-character image prompt limit.",
           );
         }
 
