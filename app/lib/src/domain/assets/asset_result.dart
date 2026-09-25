@@ -25,12 +25,25 @@ final class AssetResult {
 
   bool get isImage => mimeType.toLowerCase().startsWith('image/');
 
+  bool get isGlb {
+    final normalized = mimeType.toLowerCase();
+    return normalized == 'model/gltf-binary' ||
+        storagePath.toLowerCase().endsWith('.glb');
+  }
+
+  bool get isFbx {
+    final path = storagePath.toLowerCase();
+    return path.endsWith('.fbx') ||
+        mimeType.toLowerCase().contains('fbx');
+  }
+
   bool get isModel {
     final normalized = mimeType.toLowerCase();
-    return normalized.startsWith('model/') ||
+    return isGlb ||
+        isFbx ||
+        normalized.startsWith('model/') ||
         normalized == 'application/octet-stream' ||
-        normalized == 'application/x-binary' ||
-        storagePath.toLowerCase().endsWith('.glb');
+        normalized == 'application/x-binary';
   }
 }
 
