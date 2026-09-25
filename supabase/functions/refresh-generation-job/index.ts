@@ -286,15 +286,59 @@ function normalizedMime(response: Response): string {
     .toLowerCase();
 }
 
+function isGlb(bytes: ArrayBuffer): boolean {
+  if (bytes.byteLength < 4) return false;
+  const header = new Uint8Array(bytes, 0, 4);
+  return header[0] === 0x67 &&
+    header[1] === 0x6c &&
+    header[2] === 0x54 &&
+    header[3] === 0x46;
+}
+
+function isFbx(bytes: ArrayBuffer): boolean {
+  const signature = "Kaydara FBX Binary";
+  if (bytes.byteLength < signature.length) return false;
+  const header = new Uint8Array(bytes, 0, signature.length);
+  for (let index = 0; index < signature.length; index += 1) {
+    if (header[index] !== signature.charCodeAt(index)) return false;
+  }
+  return true;
+}
+
 export function providerOutputTarget(
   bucket: "generated-images" | "generated-models",
   mimeType: string,
+  url = "",
+  bytes?: ArrayBuffer,
 ): { extension: string; mimeType: string } {
   if (bucket === "generated-models") {
-    return {
-      extension: "glb",
-      mimeType: "model/gltf-binary",
-    };
+    const normalizedUrl = url.toLowerCase();
+    const normalizedMime = mimeType.toLowerCase();
+
+    if (
+      (bytes !== undefined && isFbx(bytes)) ||
+      normalizedUrl.includes(".fbx") ||
+      normalizedMime.includes("fbx")
+    ) {
+      return {
+        extension: "fbx",
+        mimeType: "application/octet-stream",
+      };
+    }
+
+    if (
+      bytes === undefined ||
+      isGlb(bytes) ||
+      normalizedUrl.includes(".glb") ||
+      normalizedMime === "model/gltf-binary"
+    ) {
+      return {
+        extension: "glb",
+        mimeType: "model/gltf-binary",
+      };
+    }
+
+    throw new Error("Provider model output format is not supported.");
   }
 
   const extensions: Record<string, string> = {
@@ -307,15 +351,6 @@ export function providerOutputTarget(
     throw new Error("Provider image output MIME type is not allowed.");
   }
   return { extension, mimeType };
-}
-
-function isGlb(bytes: ArrayBuffer): boolean {
-  if (bytes.byteLength < 4) return false;
-  const header = new Uint8Array(bytes, 0, 4);
-  return header[0] === 0x67 &&
-    header[1] === 0x6c &&
-    header[2] === 0x54 &&
-    header[3] === 0x46;
 }
 
 async function persistOutput(
@@ -347,10 +382,9 @@ async function persistOutput(
       const target = providerOutputTarget(
         artifact.bucket,
         responseMimeType,
+        artifact.url,
+        bytes,
       );
-      if (artifact.bucket === "generated-models" && !isGlb(bytes)) {
-        throw new Error("Provider model output was not a valid GLB file.");
-      }
 
       const suffix = artifact.role === "preview" ? "-preview" : "";
       const storagePath = input.userId +
