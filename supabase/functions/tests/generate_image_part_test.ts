@@ -99,3 +99,46 @@ Deno.test("generate-image-part builds authoritative prompt and creates job", asy
   assertStringIncludes(submittedPrompt, "Head");
   assertStringIncludes(submittedPrompt, "Keep exact bandage pattern");
 });
+
+Deno.test("generate-image-part accepts exact client-authored prompt for custom part", async () => {
+  let lookupCalled = false;
+  let submittedPrompt = "";
+  const handler = createGenerateImagePartHandler({
+    ...baseDeps,
+    findTemplatePart: () => {
+      lookupCalled = true;
+      return Promise.resolve(null);
+    },
+    createImageToImage: (input: { input: string; prompt: string }) => {
+      submittedPrompt = input.prompt;
+      return Promise.resolve("task-custom-1");
+    },
+  });
+
+  const response = await handler(request({
+    project_id: "project-1",
+    part_key: "custom-uuid-1",
+    part_label: "Arm with shoulder",
+    part_prompt: "A complete arm with shoulder at the same angle as the original image.",
+  }));
+  const body = await response.json();
+
+  assertEquals(response.status, 202);
+  assertEquals(body, { job_id: "job-part-1" });
+  assertEquals(lookupCalled, false);
+  assertEquals(
+    submittedPrompt,
+    "A complete arm with shoulder at the same angle as the original image.",
+  );
+});
+
+Deno.test("generate-image-part rejects incomplete direct prompt pair", async () => {
+  const handler = createGenerateImagePartHandler(baseDeps);
+  const response = await handler(request({
+    project_id: "project-1",
+    part_key: "custom-uuid-1",
+    part_label: "Arm",
+  }));
+
+  assertEquals(response.status, 400);
+});
