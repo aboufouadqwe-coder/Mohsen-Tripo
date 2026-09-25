@@ -181,3 +181,62 @@ Deno.test("getTask accepts Tripo terminal banned status", async () => {
   assertEquals(task.status, "banned");
   assertEquals(task.progress, 0);
 });
+
+
+Deno.test("uploadImageFromUrl uploads private image and returns file token", async () => {
+  const urls: string[] = [];
+  const client = new TripoClient({
+    apiKey: "test-key",
+    fetcher: (input, init) => {
+      const url = String(input);
+      urls.push(url);
+      if (url === "https://signed.test/reference.png") {
+        return Promise.resolve(
+          new Response(new Uint8Array([1, 2, 3]), {
+            status: 200,
+            headers: { "content-type": "image/png" },
+          }),
+        );
+      }
+      assertEquals(url, "https://openapi.tripo3d.ai/v3/files");
+      assertEquals(init?.method, "POST");
+      assertEquals(init?.body instanceof FormData, true);
+      return Promise.resolve(
+        jsonResponse({ code: 0, data: { file_token: "file_reference_1" } }),
+      );
+    },
+  });
+
+  const token = await client.uploadImageFromUrl(
+    "https://signed.test/reference.png",
+  );
+
+  assertEquals(token, "file_reference_1");
+  assertEquals(urls, [
+    "https://signed.test/reference.png",
+    "https://openapi.tripo3d.ai/v3/files",
+  ]);
+});
+
+Deno.test("getBalance returns available and frozen decimal credits", async () => {
+  const client = new TripoClient({
+    apiKey: "test-key",
+    fetcher: (input, init) => {
+      assertEquals(
+        String(input),
+        "https://openapi.tripo3d.ai/v3/account/balance",
+      );
+      assertEquals(init?.method, "GET");
+      return Promise.resolve(
+        jsonResponse({
+          code: 0,
+          data: { balance: 1234.5, frozen: 30.25 },
+        }),
+      );
+    },
+  });
+
+  const balance = await client.getBalance();
+
+  assertEquals(balance, { balance: 1234.5, frozen: 30.25 });
+});
