@@ -1,6 +1,9 @@
 import 'dart:typed_data';
 
+import 'package:image/image.dart' as img;
+
 import '../../core/errors/app_failure.dart';
+import '../../domain/smart_parts/smart_part.dart';
 
 abstract interface class ReferenceImageRepository {
   Future<String> uploadReference({
@@ -8,6 +11,20 @@ abstract interface class ReferenceImageRepository {
     required String projectId,
     required Uint8List bytes,
     required String extension,
+  });
+}
+
+abstract interface class ReferenceImageBytesReader {
+  Future<Uint8List> downloadReference(String path);
+}
+
+abstract interface class PartReferenceCropper {
+  Future<String> createPartReferenceCrop({
+    required String userId,
+    required String projectId,
+    required String partKey,
+    required String sourcePath,
+    required NormalizedRegion region,
   });
 }
 
@@ -20,6 +37,8 @@ abstract interface class GeneratedReferenceCopier {
 }
 
 abstract interface class ReferenceStoragePort {
+  Future<Uint8List> downloadReference(String path);
+
   Future<void> upload({
     required String path,
     required Uint8List bytes,
@@ -30,7 +49,11 @@ abstract interface class ReferenceStoragePort {
 }
 
 final class DefaultReferenceImageRepository
-    implements ReferenceImageRepository, GeneratedReferenceCopier {
+    implements
+        ReferenceImageRepository,
+        GeneratedReferenceCopier,
+        ReferenceImageBytesReader,
+        PartReferenceCropper {
   const DefaultReferenceImageRepository(this._storage);
 
   final ReferenceStoragePort _storage;
