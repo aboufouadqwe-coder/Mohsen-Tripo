@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mohsen_tripo/src/data/supabase/generation_gateway.dart';
 import 'package:mohsen_tripo/src/data/supabase/reference_image_repository.dart';
 import 'package:mohsen_tripo/src/domain/generation/generation_job.dart';
+import 'package:mohsen_tripo/src/domain/generation/model_generation_settings.dart';
 import 'package:mohsen_tripo/src/features/workspace/reference_image_picker.dart';
 import 'package:mohsen_tripo/src/features/workspace/source_image_generator.dart';
 
@@ -59,7 +60,10 @@ final class FakeGenerationGateway implements GenerationGateway {
   }
 
   @override
-  Future<String> generateModel(String assetResultId) {
+  Future<String> generateModel(
+    String assetResultId, {
+    ModelGenerationSettings settings = const ModelGenerationSettings(),
+  }) {
     throw UnimplementedError();
   }
 }
