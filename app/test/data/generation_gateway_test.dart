@@ -128,4 +128,20 @@ void main() {
       'enable_image_autofix': true,
     });
   });
+
+  test('getCreditBalance maps secure balance function response', () async {
+    final invoker = FakeFunctionInvoker()
+      ..responses['tripo-balance'] = {
+        'balance': 987.5,
+        'frozen': 20,
+      };
+    final gateway = DefaultGenerationGateway(invoker);
+
+    final balance = await gateway.getCreditBalance();
+
+    expect(invoker.lastFunction, 'tripo-balance');
+    expect(balance.available, 987.5);
+    expect(balance.frozen, 20);
+  });
+
 }
