@@ -252,15 +252,16 @@ final class _WorkspacePageState extends State<WorkspacePage> {
   }
 
   Future<void> _refreshCreditBalance() async {
-    final gateway = widget.generationGateway;
-    if (gateway is! CreditBalanceGateway || _balanceLoading) return;
+    final generationGateway = widget.generationGateway;
+    if (generationGateway is! CreditBalanceGateway || _balanceLoading) return;
+    final balanceGateway = generationGateway as CreditBalanceGateway;
 
     if (mounted) {
       setState(() => _balanceLoading = true);
     }
 
     try {
-      final balance = await gateway.getCreditBalance();
+      final balance = await balanceGateway.getCreditBalance();
       if (!mounted) return;
       setState(() {
         _creditBalance = balance;
