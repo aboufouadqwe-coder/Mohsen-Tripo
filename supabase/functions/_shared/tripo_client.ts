@@ -74,7 +74,7 @@ export class TripoClient {
       source = await this.#fetcher(sourceUrl);
     } catch (cause) {
       throw new ProviderError(
-        "input_fetch_failed",
+        "network_error",
         "Unable to read the private reference image before upload.",
         undefined,
         undefined,
@@ -84,7 +84,7 @@ export class TripoClient {
 
     if (!source.ok) {
       throw new ProviderError(
-        "input_fetch_failed",
+        "http_error",
         `Private reference image fetch failed with status ${source.status}.`,
       );
     }
@@ -101,7 +101,7 @@ export class TripoClient {
 
     if (extension === null) {
       throw new ProviderError(
-        "unsupported_input",
+        "malformed_response",
         "Reference image must be PNG or JPEG for Tripo file upload.",
       );
     }
@@ -109,7 +109,7 @@ export class TripoClient {
     const bytes = await source.arrayBuffer();
     if (bytes.byteLength === 0) {
       throw new ProviderError(
-        "empty_input",
+        "malformed_response",
         "Reference image was empty.",
       );
     }
