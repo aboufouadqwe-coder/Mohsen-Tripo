@@ -104,9 +104,6 @@ final class _WorkspacePageState extends State<WorkspacePage> {
     if (terminalCount > _lastBatchTerminalCount) {
       _resultsVersion += 1;
       unawaited(_refreshCreditBalance());
-      if (project.referenceImagePath != null) {
-        unawaited(_analyzeReference());
-      }
     }
     _lastBatchTerminalCount = terminalCount;
 
@@ -216,6 +213,9 @@ final class _WorkspacePageState extends State<WorkspacePage> {
         ),
       );
       unawaited(_refreshCreditBalance());
+      if (project.referenceImagePath != null) {
+        unawaited(_analyzeReference());
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() {
