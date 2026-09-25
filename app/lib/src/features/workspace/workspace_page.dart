@@ -12,6 +12,7 @@ import '../../domain/assets/asset_result.dart';
 import '../../domain/generation/generation_job.dart';
 import '../../domain/generation/model_generation_settings.dart';
 import '../../domain/projects/project.dart';
+import '../../domain/smart_parts/smart_part.dart';
 import '../../domain/templates/asset_template.dart';
 import '../../domain/templates/builtin_templates.dart';
 import '../results/generated_image_downloader.dart';
@@ -20,6 +21,9 @@ import '../results/model_generation_settings_panel.dart';
 import '../results/results_gallery.dart';
 import 'generation_batch_controller.dart';
 import 'job_polling_service.dart';
+import 'smart_part_planner_panel.dart';
+import 'reference_analysis_service.dart';
+import 'part_region_picker.dart';
 import 'reference_image_picker.dart';
 import 'source_image_generator.dart';
 import 'template_editor.dart';
@@ -66,6 +70,10 @@ final class _WorkspacePageState extends State<WorkspacePage> {
       const ModelGenerationSettings();
   TripoCreditBalance? _creditBalance;
   bool _balanceLoading = false;
+  final ReferenceAnalysisService _referenceAnalysisService =
+      const MlKitReferenceAnalysisService();
+  ReferenceAnalysis? _referenceAnalysis;
+  bool _referenceAnalyzing = false;
 
   @override
   void initState() {
@@ -96,6 +104,9 @@ final class _WorkspacePageState extends State<WorkspacePage> {
     if (terminalCount > _lastBatchTerminalCount) {
       _resultsVersion += 1;
       unawaited(_refreshCreditBalance());
+      if (project.referenceImagePath != null) {
+        unawaited(_analyzeReference());
+      }
     }
     _lastBatchTerminalCount = terminalCount;
 
@@ -289,13 +300,139 @@ final class _WorkspacePageState extends State<WorkspacePage> {
         project.id,
         path,
       );
-      if (mounted) setState(() => _project = updated);
+      if (!mounted) return;
+      setState(() {
+        _project = updated;
+        _referenceAnalysis = null;
+      });
+      unawaited(_analyzeReference());
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تعذر حفظ الصورة المرجعية.')),
       );
     }
+  }
+
+  Future<void> _analyzeReference() async {
+    final project = _project;
+    final path = project?.referenceImagePath;
+    final repository = widget.referenceImageRepository;
+    if (project == null ||
+        path == null ||
+        repository is! ReferenceImageBytesReader ||
+        _referenceAnalyzing) {
+      return;
+    }
+
+    setState(() => _referenceAnalyzing = true);
+    try {
+      final reader = repository as ReferenceImageBytesReader;
+      final bytes = await reader.downloadReference(path);
+      final analysis = await _referenceAnalysisService.analyze(bytes);
+      if (!mounted) return;
+      setState(() {
+        _referenceAnalysis = analysis;
+        _referenceAnalyzing = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _referenceAnalyzing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تعذر تحليل الصورة تلقائيًا. يمكنك إضافة الأجزاء يدويًا.'),
+        ),
+      );
+    }
+  }
+
+  void _applySmartSuggestions(List<SuggestedPart> suggestions) {
+    final controller = _templateController;
+    if (controller == null) return;
+    controller.replaceWithSuggestions(suggestions);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم تطبيق اقتراحات التقسيم الذكي.')),
+    );
+  }
+
+  Future<void> _selectPartRegion(EditableTemplatePart part) async {
+    final project = _project;
+    final referencePath = project?.referenceImagePath;
+    final repository = widget.referenceImageRepository;
+    if (project == null ||
+        referencePath == null ||
+        repository is! ReferenceImageBytesReader) {
+      return;
+    }
+
+    try {
+      final reader = repository as ReferenceImageBytesReader;
+      final bytes = await reader.downloadReference(referencePath);
+      if (!mounted) return;
+      final region = await showDialog<NormalizedRegion>(
+        context: context,
+        builder: (context) => PartRegionPickerDialog(
+          imageBytes: bytes,
+          initialRegion: part.region,
+        ),
+      );
+      if (region != null && mounted) {
+        _templateController?.setRegion(part.key, region);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر فتح محدد منطقة الجزء.')),
+      );
+    }
+  }
+
+  bool _isWholeImageRegion(NormalizedRegion region) {
+    return region.left <= 0.01 &&
+        region.top <= 0.01 &&
+        region.right >= 0.99 &&
+        region.bottom >= 0.99;
+  }
+
+  Future<GenerationPartRequest?> _buildPartRequest(
+    EditableTemplatePart part,
+  ) async {
+    final project = _project;
+    final referencePath = project?.referenceImagePath;
+    if (project == null || referencePath == null) return null;
+
+    String? partReferencePath;
+    final region = part.region;
+    if (region != null && !_isWholeImageRegion(region)) {
+      final repository = widget.referenceImageRepository;
+      if (repository is! PartReferenceCropper) return null;
+      try {
+        partReferencePath = await (repository as PartReferenceCropper)
+            .createPartReferenceCrop(
+          userId: widget.currentUserId(),
+          projectId: project.id,
+          partKey: part.key,
+          sourcePath: referencePath,
+          region: region,
+        );
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('تعذر تجهيز قص الجزء: ${part.label}'),
+            ),
+          );
+        }
+        return null;
+      }
+    }
+
+    return GenerationPartRequest(
+      key: part.key,
+      label: part.label,
+      prompt: part.promptFragment,
+      referenceStoragePath: partReferencePath,
+    );
   }
 
   Future<void> _selectGeneratedReference(GenerationJob job) async {
@@ -334,7 +471,7 @@ final class _WorkspacePageState extends State<WorkspacePage> {
     }
   }
 
-  void _generateAll() {
+  Future<void> _generateAll() async {
     final project = _project;
     final templateController = _templateController;
     final batchController = _batchController;
@@ -345,65 +482,61 @@ final class _WorkspacePageState extends State<WorkspacePage> {
       return;
     }
 
-    final enabledParts = templateController.parts
+    final enabled = templateController.parts
         .where((part) => part.enabled)
-        .map(
-          (part) => GenerationPartRequest(
-            key: part.key,
-            label: part.label,
-            prompt: part.promptFragment,
-          ),
-        )
         .toList(growable: false);
-
-    if (enabledParts.isEmpty) {
+    if (enabled.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('فعّل جزءًا واحدًا على الأقل.')),
       );
       return;
     }
 
-    unawaited(batchController.generateAll(parts: enabledParts));
+    final requests = <GenerationPartRequest>[];
+    for (final part in enabled) {
+      final request = await _buildPartRequest(part);
+      if (request != null) requests.add(request);
+    }
+    if (requests.isEmpty || !mounted) return;
+
+    await batchController.generateAll(parts: requests);
   }
 
-  GenerationPartRequest? _requestForPart(String partKey) {
+  EditableTemplatePart? _partByKey(String partKey) {
     final controller = _templateController;
     if (controller == null) return null;
-
     for (final part in controller.parts) {
-      if (part.key == partKey) {
-        return GenerationPartRequest(
-          key: part.key,
-          label: part.label,
-          prompt: part.promptFragment,
-        );
-      }
+      if (part.key == partKey) return part;
     }
     return null;
   }
 
-  void _generatePart(String partKey) {
+  Future<void> _generatePart(String partKey) async {
     final project = _project;
     final batchController = _batchController;
-    final request = _requestForPart(partKey);
+    final part = _partByKey(partKey);
     if (project?.referenceImagePath == null ||
         batchController == null ||
-        request == null) {
+        part == null) {
       return;
     }
-    unawaited(batchController.generatePart(request));
+    final request = await _buildPartRequest(part);
+    if (request == null) return;
+    await batchController.generatePart(request);
   }
 
-  void _retryPart(String partKey) {
+  Future<void> _retryPart(String partKey) async {
     final project = _project;
     final batchController = _batchController;
-    final request = _requestForPart(partKey);
+    final part = _partByKey(partKey);
     if (project?.referenceImagePath == null ||
         batchController == null ||
-        request == null) {
+        part == null) {
       return;
     }
-    unawaited(batchController.regeneratePart(request));
+    final request = await _buildPartRequest(part);
+    if (request == null) return;
+    await batchController.regeneratePart(request);
   }
 
   Future<void> _generateModel(AssetResult asset) async {
@@ -526,6 +659,14 @@ final class _WorkspacePageState extends State<WorkspacePage> {
               const SizedBox(height: 8),
               Text('المسار: ${project.referenceImagePath}'),
             ],
+            const SizedBox(height: 16),
+            SmartPartPlannerPanel(
+              analysis: _referenceAnalysis,
+              loading: _referenceAnalyzing,
+              enabled: project.referenceImagePath != null,
+              onAnalyze: _analyzeReference,
+              onApply: _applySmartSuggestions,
+            ),
             const SizedBox(height: 24),
             Text(
               'إنشاء مرجع بالذكاء الاصطناعي',
@@ -551,7 +692,7 @@ final class _WorkspacePageState extends State<WorkspacePage> {
             FilledButton.icon(
               onPressed: project.referenceImagePath != null &&
                       !(batchController?.isBusy ?? false)
-                  ? _generateAll
+                  ? () => unawaited(_generateAll())
                   : null,
               icon: const Icon(Icons.play_arrow),
               label: const Text('توليد كل الأجزاء'),
@@ -560,9 +701,15 @@ final class _WorkspacePageState extends State<WorkspacePage> {
             TemplateEditor(
               controller: _templateController!,
               generationState: batchController?.state ?? const {},
-              onRetry: project.referenceImagePath == null ? null : _retryPart,
-              onGenerate:
-                  project.referenceImagePath == null ? null : _generatePart,
+              onRetry: project.referenceImagePath == null
+                  ? null
+                  : (key) => unawaited(_retryPart(key)),
+              onGenerate: project.referenceImagePath == null
+                  ? null
+                  : (key) => unawaited(_generatePart(key)),
+              onSelectRegion: project.referenceImagePath == null
+                  ? null
+                  : _selectPartRegion,
             ),
             const SizedBox(height: 24),
             ModelGenerationSettingsPanel(
