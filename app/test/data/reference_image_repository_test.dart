@@ -29,6 +29,9 @@ final class FakeReferenceStorage implements ReferenceStoragePort {
     uploadedBytes = bytes;
     uploadedContentType = contentType;
   }
+}
+
+void main() {
   test('direct 3d model input is stored under owned model-inputs path', () async {
     final source = img.Image(width: 300, height: 300);
     final bytes = Uint8List.fromList(img.encodePng(source));
@@ -50,9 +53,7 @@ final class FakeReferenceStorage implements ReferenceStoragePort {
     expect(storage.uploadedPath, path);
     expect(storage.uploadedContentType, 'image/png');
   });
-}
 
-void main() {
   test('part crop stores a normalized PNG under owned project path', () async {
     final source = img.Image(width: 100, height: 80);
     final storage = FakeReferenceStorage(
