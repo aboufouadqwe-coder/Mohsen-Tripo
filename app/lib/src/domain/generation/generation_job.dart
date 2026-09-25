@@ -27,6 +27,8 @@ final class GenerationJob {
     this.assetResultId,
     this.storagePath,
     this.mimeType,
+    this.createdAt,
+    this.completedAt,
   });
 
   final String id;
@@ -42,6 +44,15 @@ final class GenerationJob {
   final String? assetResultId;
   final String? storagePath;
   final String? mimeType;
+  final DateTime? createdAt;
+  final DateTime? completedAt;
+
+  Duration? get duration {
+    final start = createdAt;
+    final end = completedAt;
+    if (start == null || end == null || end.isBefore(start)) return null;
+    return end.difference(start);
+  }
 
   bool get isTerminal => switch (status) {
         GenerationStatus.success ||
