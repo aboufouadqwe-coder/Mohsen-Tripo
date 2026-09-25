@@ -5,7 +5,7 @@ import { createRefreshGenerationJobHandler } from "../refresh-generation-job/ind
 const secret = "TRIPO_SUPER_SECRET";
 
 function request(body: unknown, authenticated = true): Request {
-  const headers = new Headers({ "content-type": "application/json" });
+  const headers = new Headers({ "content-type": "application/json" });\n  headers.set("x-tripo-api-key", "tsk_test_key_12345678901234567890");
   if (authenticated) headers.set("authorization", "Bearer user-token");
   return new Request("https://edge.test/refresh-generation-job", {
     method: "POST",
@@ -28,7 +28,7 @@ const baseDeps = {
   authenticate: (_token: string) => Promise.resolve("user-1"),
   findOwnedJob: (_userId: string, jobId: string) =>
     Promise.resolve(jobId === "job-1" ? baseJob : null),
-  getProviderTask: (_taskId: string) =>
+  getProviderTask: (_apiKey: string, _taskId: string) =>
     Promise.resolve({
       taskId: "task-1",
       type: "image_to_image",
