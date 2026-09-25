@@ -93,16 +93,20 @@ final class DefaultReferenceImageRepository
       final clamped = region.clamp();
       final x = (clamped.left * source.width)
           .floor()
-          .clamp(0, source.width - 1);
+          .clamp(0, source.width - 1)
+          .toInt();
       final y = (clamped.top * source.height)
           .floor()
-          .clamp(0, source.height - 1);
+          .clamp(0, source.height - 1)
+          .toInt();
       final right = (clamped.right * source.width)
           .ceil()
-          .clamp(x + 1, source.width);
+          .clamp(x + 1, source.width)
+          .toInt();
       final bottom = (clamped.bottom * source.height)
           .ceil()
-          .clamp(y + 1, source.height);
+          .clamp(y + 1, source.height)
+          .toInt();
 
       final crop = img.copyCrop(
         source,
