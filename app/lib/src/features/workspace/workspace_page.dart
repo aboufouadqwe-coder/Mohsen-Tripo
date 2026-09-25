@@ -392,6 +392,26 @@ final class _WorkspacePageState extends State<WorkspacePage> {
     }
   }
 
+  Future<void> _downloadModel(
+    AssetResult asset,
+    String signedUrl,
+  ) async {
+    try {
+      await _imageDownloader.downloadModel(asset, signedUrl);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم حفظ المجسم في Downloads/Mohsen-Tripo.'),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر تنزيل المجسم إلى الهاتف.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -483,6 +503,7 @@ final class _WorkspacePageState extends State<WorkspacePage> {
               refreshVersion: _resultsVersion,
               onGenerateModel: _generateModel,
               onDownloadImage: _downloadImage,
+              onDownloadModel: _downloadModel,
               modelGenerationBusy: modelController?.isBusy ?? false,
               activeModelAssetResultId:
                   modelController?.activeAssetResultId,
