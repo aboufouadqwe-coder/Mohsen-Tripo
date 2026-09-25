@@ -7,7 +7,7 @@ import 'package:mohsen_tripo/src/domain/generation/generation_job.dart';
 import 'package:mohsen_tripo/src/domain/generation/model_generation_settings.dart';
 import 'package:mohsen_tripo/src/features/results/model_generation_controller.dart';
 
-final class FakeModelGateway implements GenerationGateway {
+final class FakeModelGateway implements GenerationGateway, DirectModelGenerationGateway {
   int modelCalls = 0;
   String? lastAssetResultId;
   ModelGenerationSettings? lastSettings;
@@ -58,26 +58,6 @@ final class FakeModelGateway implements GenerationGateway {
     lastSettings = settings;
     return 'model-job-$modelCalls';
   }
-  test('direct reference path can start model generation', () async {
-    final gateway = FakeModelGateway();
-    final controller = ModelGenerationController(
-      gateway: gateway,
-      pollUntilTerminal: (jobId) async => completedModelJob(jobId),
-    );
-
-    await controller.generateFromReferencePath(
-      projectId: 'project-1',
-      referenceStoragePath:
-          'user-1/project-1/model-inputs/model-input-1.png',
-    );
-
-    expect(gateway.modelCalls, 1);
-    expect(
-      gateway.lastAssetResultId,
-      'user-1/project-1/model-inputs/model-input-1.png',
-    );
-    expect(controller.job?.status, GenerationStatus.success);
-  });
 }
 
 AssetResult asset({
@@ -108,6 +88,27 @@ GenerationJob completedModelJob(String jobId) {
 }
 
 void main() {
+  test('direct reference path can start model generation', () async {
+    final gateway = FakeModelGateway();
+    final controller = ModelGenerationController(
+      gateway: gateway,
+      pollUntilTerminal: (jobId) async => completedModelJob(jobId),
+    );
+
+    await controller.generateFromReferencePath(
+      projectId: 'project-1',
+      referenceStoragePath:
+          'user-1/project-1/model-inputs/model-input-1.png',
+    );
+
+    expect(gateway.modelCalls, 1);
+    expect(
+      gateway.lastAssetResultId,
+      'user-1/project-1/model-inputs/model-input-1.png',
+    );
+    expect(controller.job?.status, GenerationStatus.success);
+  });
+
   test('model generation uses selected image asset_result_id', () async {
     final gateway = FakeModelGateway();
     final controller = ModelGenerationController(
