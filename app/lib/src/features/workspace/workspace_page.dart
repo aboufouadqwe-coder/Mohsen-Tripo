@@ -64,6 +64,8 @@ final class _WorkspacePageState extends State<WorkspacePage> {
       const GeneratedImageDownloader();
   ModelGenerationSettings _modelSettings =
       const ModelGenerationSettings();
+  TripoCreditBalance? _creditBalance;
+  bool _balanceLoading = false;
 
   @override
   void initState() {
@@ -93,6 +95,7 @@ final class _WorkspacePageState extends State<WorkspacePage> {
         .length;
     if (terminalCount > _lastBatchTerminalCount) {
       _resultsVersion += 1;
+      unawaited(_refreshCreditBalance());
     }
     _lastBatchTerminalCount = terminalCount;
 
@@ -107,6 +110,7 @@ final class _WorkspacePageState extends State<WorkspacePage> {
         modelJob!.id != _lastModelTerminalJobId) {
       _lastModelTerminalJobId = modelJob.id;
       _resultsVersion += 1;
+      unawaited(_refreshCreditBalance());
     }
 
     if (mounted) setState(() {});
@@ -200,6 +204,7 @@ final class _WorkspacePageState extends State<WorkspacePage> {
           modelController,
         ),
       );
+      unawaited(_refreshCreditBalance());
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -244,6 +249,34 @@ final class _WorkspacePageState extends State<WorkspacePage> {
         ),
       );
     }
+  }
+
+  Future<void> _refreshCreditBalance() async {
+    final gateway = widget.generationGateway;
+    if (gateway is! CreditBalanceGateway || _balanceLoading) return;
+
+    if (mounted) {
+      setState(() => _balanceLoading = true);
+    }
+
+    try {
+      final balance = await gateway.getCreditBalance();
+      if (!mounted) return;
+      setState(() {
+        _creditBalance = balance;
+        _balanceLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _balanceLoading = false);
+    }
+  }
+
+  String _creditText(double value) {
+    if (value == value.roundToDouble()) {
+      return value.toStringAsFixed(0);
+    }
+    return value.toStringAsFixed(2);
   }
 
   Future<void> _setReferencePath(String path) async {
@@ -448,6 +481,33 @@ final class _WorkspacePageState extends State<WorkspacePage> {
               project.identityPrompt.isEmpty
                   ? 'لم تُحدد هوية المشروع بعد.'
                   : project.identityPrompt,
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.bolt),
+                title: Text(
+                  _creditBalance == null
+                      ? 'رصيد Tripo'
+                      : 'الرصيد: ${_creditText(_creditBalance!.available)}',
+                ),
+                subtitle: _creditBalance == null
+                    ? const Text('اضغط تحديث لعرض الرصيد.')
+                    : Text(
+                        'محجوز للمهام الحالية: '
+                        '${_creditText(_creditBalance!.frozen)}',
+                      ),
+                trailing: _balanceLoading
+                    ? const SizedBox.square(
+                        dimension: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : IconButton(
+                        tooltip: 'تحديث الرصيد',
+                        onPressed: _refreshCreditBalance,
+                        icon: const Icon(Icons.refresh),
+                      ),
+              ),
             ),
             const SizedBox(height: 20),
             Text(
