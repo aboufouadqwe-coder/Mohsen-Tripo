@@ -18,7 +18,7 @@ class MainActivity : FlutterActivity() {
             flutterEngine.dartExecutor.binaryMessenger,
             mediaChannel,
         ).setMethodCallHandler { call, result ->
-            if (call.method != "saveImage") {
+            if (call.method != "saveImage" && call.method != "saveModel") {
                 result.notImplemented()
                 return@setMethodCallHandler
             }
@@ -26,7 +26,7 @@ class MainActivity : FlutterActivity() {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
                 result.error(
                     "unsupported_android",
-                    "Saving generated images requires Android 10 or newer.",
+                    "Saving generated files requires Android 10 or newer.",
                     null,
                 )
                 return@setMethodCallHandler
@@ -39,23 +39,32 @@ class MainActivity : FlutterActivity() {
             if (bytes == null || bytes.isEmpty() ||
                 fileName.isNullOrBlank() || mimeType.isNullOrBlank()
             ) {
-                result.error("invalid_image", "Image data is invalid.", null)
+                result.error("invalid_file", "Generated file data is invalid.", null)
                 return@setMethodCallHandler
             }
 
             try {
+                val isModel = call.method == "saveModel"
+                val collection = if (isModel) {
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI
+                } else {
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                }
+                val relativePath = if (isModel) {
+                    Environment.DIRECTORY_DOWNLOADS + "/Mohsen-Tripo"
+                } else {
+                    Environment.DIRECTORY_PICTURES + "/Mohsen-Tripo"
+                }
+
                 val values = ContentValues().apply {
-                    put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
-                    put(MediaStore.Images.Media.MIME_TYPE, mimeType)
-                    put(
-                        MediaStore.Images.Media.RELATIVE_PATH,
-                        Environment.DIRECTORY_PICTURES + "/Mohsen-Tripo",
-                    )
-                    put(MediaStore.Images.Media.IS_PENDING, 1)
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
+                    put(MediaStore.MediaColumns.IS_PENDING, 1)
                 }
 
                 val uri = contentResolver.insert(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    collection,
                     values,
                 ) ?: throw IllegalStateException("MediaStore insert failed.")
 
@@ -70,13 +79,13 @@ class MainActivity : FlutterActivity() {
                 }
 
                 values.clear()
-                values.put(MediaStore.Images.Media.IS_PENDING, 0)
+                values.put(MediaStore.MediaColumns.IS_PENDING, 0)
                 contentResolver.update(uri, values, null, null)
                 result.success(uri.toString())
             } catch (error: Throwable) {
                 result.error(
                     "save_failed",
-                    error.message ?: "Unable to save image.",
+                    error.message ?: "Unable to save generated file.",
                     null,
                 )
             }
