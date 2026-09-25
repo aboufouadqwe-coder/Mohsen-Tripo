@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:image/image.dart' as img;
+import 'package:uuid/uuid.dart';
 
 import '../../core/errors/app_failure.dart';
 import '../../domain/smart_parts/smart_part.dart';
@@ -25,6 +26,15 @@ abstract interface class PartReferenceCropper {
     required String partKey,
     required String sourcePath,
     required NormalizedRegion region,
+  });
+}
+
+abstract interface class DirectModelImageRepository {
+  Future<String> uploadModelInput({
+    required String userId,
+    required String projectId,
+    required Uint8List bytes,
+    required String extension,
   });
 }
 
@@ -53,10 +63,15 @@ final class DefaultReferenceImageRepository
         ReferenceImageRepository,
         GeneratedReferenceCopier,
         ReferenceImageBytesReader,
-        PartReferenceCropper {
-  const DefaultReferenceImageRepository(this._storage);
+        PartReferenceCropper,
+        DirectModelImageRepository {
+  DefaultReferenceImageRepository(
+    this._storage, {
+    String Function()? objectId,
+  }) : _objectId = objectId ?? const Uuid().v4;
 
   final ReferenceStoragePort _storage;
+  final String Function() _objectId;
 
   @override
   Future<Uint8List> downloadReference(String path) {
@@ -158,6 +173,50 @@ final class DefaultReferenceImageRepository
         path: path,
         bytes: bytes,
         contentType: 'image/png',
+      );
+      return path;
+    } on AppFailure {
+      rethrow;
+    } catch (_) {
+      throw AppFailure.storage();
+    }
+  }
+
+  @override
+  Future<String> uploadModelInput({
+    required String userId,
+    required String projectId,
+    required Uint8List bytes,
+    required String extension,
+  }) async {
+    if (userId.trim().isEmpty ||
+        projectId.trim().isEmpty ||
+        bytes.isEmpty) {
+      throw AppFailure.validation('Direct model image data is incomplete.');
+    }
+
+    final normalizedExtension = extension.toLowerCase().replaceFirst('.', '');
+    final contentType = switch (normalizedExtension) {
+      'png' => 'image/png',
+      'jpg' || 'jpeg' => 'image/jpeg',
+      _ => throw AppFailure.validation(
+          'Direct model image must be PNG or JPEG.',
+        ),
+    };
+    final outputExtension =
+        normalizedExtension == 'jpeg' ? 'jpg' : normalizedExtension;
+    final id = _objectId().trim();
+    if (id.isEmpty) {
+      throw AppFailure.storage();
+    }
+    final path =
+        '${userId.trim()}/${projectId.trim()}/model-inputs/$id.$outputExtension';
+
+    try {
+      await _storage.upload(
+        path: path,
+        bytes: bytes,
+        contentType: contentType,
       );
       return path;
     } on AppFailure {
