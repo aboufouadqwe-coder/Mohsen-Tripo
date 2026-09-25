@@ -213,9 +213,6 @@ final class _WorkspacePageState extends State<WorkspacePage> {
         ),
       );
       unawaited(_refreshCreditBalance());
-      if (project.referenceImagePath != null) {
-        unawaited(_analyzeReference());
-      }
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -305,7 +302,6 @@ final class _WorkspacePageState extends State<WorkspacePage> {
         _project = updated;
         _referenceAnalysis = null;
       });
-      unawaited(_analyzeReference());
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
