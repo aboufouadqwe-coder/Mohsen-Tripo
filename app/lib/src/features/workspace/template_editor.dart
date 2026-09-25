@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../domain/smart_parts/smart_part.dart';
 import '../../domain/templates/template_part.dart';
+import 'part_prompt_profiles.dart';
 import 'generation_state.dart';
 import 'part_request_tile.dart';
 
@@ -11,23 +13,36 @@ final class EditableTemplatePart {
     required this.label,
     required this.promptFragment,
     required this.enabled,
+    required this.kind,
+    required this.promptMode,
+    this.region,
   });
 
   final String key;
   final String label;
   final String promptFragment;
   final bool enabled;
+  final SmartPartKind kind;
+  final PartPromptMode promptMode;
+  final NormalizedRegion? region;
 
   EditableTemplatePart copyWith({
     String? label,
     String? promptFragment,
     bool? enabled,
+    SmartPartKind? kind,
+    PartPromptMode? promptMode,
+    NormalizedRegion? region,
+    bool clearRegion = false,
   }) {
     return EditableTemplatePart(
       key: key,
       label: label ?? this.label,
       promptFragment: promptFragment ?? this.promptFragment,
       enabled: enabled ?? this.enabled,
+      kind: kind ?? this.kind,
+      promptMode: promptMode ?? this.promptMode,
+      region: clearRegion ? null : (region ?? this.region),
     );
   }
 }
@@ -46,6 +61,8 @@ final class TemplateEditorController extends ChangeNotifier {
           label: part.label,
           promptFragment: part.promptFragment,
           enabled: part.enabledByDefault,
+          kind: PartKindClassifier.classify(part.label),
+          promptMode: PartPromptMode.exact,
         ),
       ),
     );
@@ -67,17 +84,25 @@ final class TemplateEditorController extends ChangeNotifier {
     required String key,
     required String label,
     required String promptFragment,
+    PartPromptMode? promptMode,
   }) {
     final index = _parts.indexWhere((part) => part.key == key);
     final normalizedLabel = label.trim();
-    final normalizedPrompt = promptFragment.trim();
-    if (index < 0 || normalizedLabel.isEmpty || normalizedPrompt.isEmpty) {
-      return false;
+    final selectedMode = promptMode ?? _parts[index].promptMode;
+    var normalizedPrompt = promptFragment.trim();
+    if (index < 0 || normalizedLabel.isEmpty) return false;
+
+    final kind = PartKindClassifier.classify(normalizedLabel);
+    if (selectedMode == PartPromptMode.smart && normalizedPrompt.isEmpty) {
+      normalizedPrompt = PartPromptProfiles.build(kind);
     }
+    if (normalizedPrompt.isEmpty) return false;
 
     _parts[index] = _parts[index].copyWith(
       label: normalizedLabel,
       promptFragment: normalizedPrompt,
+      kind: kind,
+      promptMode: selectedMode,
     );
     notifyListeners();
     return true;
@@ -86,10 +111,18 @@ final class TemplateEditorController extends ChangeNotifier {
   bool addCustomPart({
     required String label,
     required String promptFragment,
+    PartPromptMode promptMode = PartPromptMode.exact,
+    NormalizedRegion? region,
   }) {
     final normalizedLabel = label.trim();
-    final normalizedPrompt = promptFragment.trim();
-    if (normalizedLabel.isEmpty || normalizedPrompt.isEmpty) return false;
+    var normalizedPrompt = promptFragment.trim();
+    if (normalizedLabel.isEmpty) return false;
+
+    final kind = PartKindClassifier.classify(normalizedLabel);
+    if (promptMode == PartPromptMode.smart && normalizedPrompt.isEmpty) {
+      normalizedPrompt = PartPromptProfiles.build(kind);
+    }
+    if (normalizedPrompt.isEmpty) return false;
 
     _parts.add(
       EditableTemplatePart(
@@ -97,10 +130,55 @@ final class TemplateEditorController extends ChangeNotifier {
         label: normalizedLabel,
         promptFragment: normalizedPrompt,
         enabled: true,
+        kind: kind,
+        promptMode: promptMode,
+        region: region,
       ),
     );
     notifyListeners();
     return true;
+  }
+
+  void replaceWithSuggestions(Iterable<SuggestedPart> suggestions) {
+    _parts
+      ..clear()
+      ..addAll(
+        suggestions.map(
+          (part) => EditableTemplatePart(
+            key: part.key,
+            label: part.label,
+            promptFragment: part.prompt,
+            enabled: part.enabled,
+            kind: part.kind,
+            promptMode: PartPromptMode.smart,
+            region: part.region,
+          ),
+        ),
+      );
+    notifyListeners();
+  }
+
+  void setRegion(String key, NormalizedRegion? region) {
+    final index = _parts.indexWhere((part) => part.key == key);
+    if (index < 0) return;
+    _parts[index] = _parts[index].copyWith(
+      region: region,
+      clearRegion: region == null,
+    );
+    notifyListeners();
+  }
+
+  void rebuildSmartPrompt(String key) {
+    final index = _parts.indexWhere((part) => part.key == key);
+    if (index < 0) return;
+    final part = _parts[index];
+    final kind = PartKindClassifier.classify(part.label);
+    _parts[index] = part.copyWith(
+      kind: kind,
+      promptMode: PartPromptMode.smart,
+      promptFragment: PartPromptProfiles.build(kind),
+    );
+    notifyListeners();
   }
 
   void reorder(int oldIndex, int newIndex) {
