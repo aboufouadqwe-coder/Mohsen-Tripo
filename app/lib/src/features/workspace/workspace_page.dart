@@ -16,6 +16,7 @@ import '../../domain/projects/project.dart';
 import '../../domain/smart_parts/smart_part.dart';
 import '../../domain/templates/asset_template.dart';
 import '../../domain/templates/builtin_templates.dart';
+import '../results/direct_model_image_picker.dart';
 import '../results/generated_image_downloader.dart';
 import '../results/model_generation_controller.dart';
 import '../results/model_generation_settings_panel.dart';
@@ -565,6 +566,17 @@ final class _WorkspacePageState extends State<WorkspacePage> {
     );
   }
 
+  Future<void> _generateModelFromReferencePath(String path) async {
+    final project = _project;
+    final controller = _modelController;
+    if (project == null || controller == null) return;
+    await controller.generateFromReferencePath(
+      projectId: project.id,
+      referenceStoragePath: path,
+      settings: _modelSettings,
+    );
+  }
+
   Future<void> _downloadImage(
     AssetResult asset,
     String signedUrl,
@@ -732,6 +744,17 @@ final class _WorkspacePageState extends State<WorkspacePage> {
                   : _selectPartRegion,
             ),
             const SizedBox(height: 24),
+            if (widget.referenceImageRepository is DirectModelImageRepository) ...[
+              DirectModelImagePicker(
+                userId: widget.currentUserId(),
+                projectId: project.id,
+                repository:
+                    widget.referenceImageRepository as DirectModelImageRepository,
+                disabled: modelController?.isBusy ?? false,
+                onGenerate: _generateModelFromReferencePath,
+              ),
+              const SizedBox(height: 16),
+            ],
             ModelGenerationSettingsPanel(
               settings: _modelSettings,
               disabled: modelController?.isBusy ?? false,
