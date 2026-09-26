@@ -18,6 +18,7 @@ abstract final class PartPromptProfiles {
       SmartPartKind.rightLegDetached => _rightLeg,
       SmartPartKind.leftLegDetached => _leftLeg,
       SmartPartKind.feetShoes => _feet,
+      SmartPartKind.clothingOutfit => clothingOutfit,
       SmartPartKind.accessory => _accessory,
       SmartPartKind.custom => _custom,
     };
@@ -158,6 +159,9 @@ abstract final class PartKindClassifier {
     }
     if (_hasAny(value, const ['foot', 'feet', 'shoe', 'shoes', 'قدم', 'حذاء', 'أحذية'])) {
       return SmartPartKind.feetShoes;
+    }
+    if (_hasAny(value, const ['clothing', 'outfit', 'clothes', 'ملابس', 'زي', 'ثوب', 'فستان'])) {
+      return SmartPartKind.clothingOutfit;
     }
     if (_hasAny(value, const ['accessory', 'accessories', 'اكسسوار', 'إكسسوار', 'ملحق'])) {
       return SmartPartKind.accessory;

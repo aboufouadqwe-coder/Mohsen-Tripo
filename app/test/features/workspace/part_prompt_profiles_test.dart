@@ -22,8 +22,10 @@ void main() {
 
     expect(footwear, contains('footwear/shoes as separate wearable assets'));
     expect(footwear, contains('Do not include feet, leg skin'));
-    expect(PartPromptProfiles.clothingOutfit, contains('separate empty wearable geometry'));
-    expect(PartPromptProfiles.clothingOutfit, contains('Do not include skin, body anatomy'));
+    final clothing = PartPromptProfiles.build(SmartPartKind.clothingOutfit);
+    expect(clothing, contains('separate empty wearable geometry'));
+    expect(clothing, contains('Do not include skin, body anatomy'));
+    expect(PartKindClassifier.classify('ملابس / زي'), SmartPartKind.clothingOutfit);
   });
 
   test('clean head prompt removes hair and eyelashes', () {

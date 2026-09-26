@@ -178,4 +178,32 @@ void main() {
     expect(prompt, contains('Keep the exact dirty bandage pattern.'));
   });
 
+  test('manual smart selection keeps selected region and explicit Arabic type', () {
+    final controller = TemplateEditorController(
+      initialParts: const [],
+      newKey: () => 'manual-clothing-1',
+    );
+    const region = NormalizedRegion(
+      left: 0.15,
+      top: 0.2,
+      right: 0.8,
+      bottom: 0.9,
+    );
+
+    final added = controller.addCustomPart(
+      label: 'ملابس / زي',
+      promptFragment: '',
+      promptMode: PartPromptMode.smart,
+      kind: SmartPartKind.clothingOutfit,
+      region: region,
+    );
+
+    expect(added, isTrue);
+    final part = controller.parts.single;
+    expect(part.kind, SmartPartKind.clothingOutfit);
+    expect(part.region, same(region));
+    expect(part.promptFragment, contains('separate empty wearable geometry'));
+    expect(part.promptFragment, contains('Do not include skin, body anatomy'));
+  });
+
 }

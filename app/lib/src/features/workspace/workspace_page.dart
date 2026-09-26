@@ -173,7 +173,7 @@ final class _WorkspacePageState extends State<WorkspacePage> {
       }
 
       final templateController = TemplateEditorController(
-        initialParts: template.parts,
+        initialParts: const [],
       );
       final batchController = GenerationBatchController(
         gateway: widget.generationGateway,
@@ -371,6 +371,38 @@ final class _WorkspacePageState extends State<WorkspacePage> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('تم تطبيق اقتراحات التقسيم الذكي.')),
     );
+  }
+
+  Future<NormalizedRegion?> _pickManualRegion(
+    NormalizedRegion? initialRegion,
+  ) async {
+    final project = _project;
+    final referencePath = project?.referenceImagePath;
+    final repository = widget.referenceImageRepository;
+    if (project == null ||
+        referencePath == null ||
+        repository is! ReferenceImageBytesReader) {
+      return null;
+    }
+
+    try {
+      final reader = repository as ReferenceImageBytesReader;
+      final bytes = await reader.downloadReference(referencePath);
+      if (!mounted) return null;
+      return showDialog<NormalizedRegion>(
+        context: context,
+        builder: (context) => PartRegionPickerDialog(
+          imageBytes: bytes,
+          initialRegion: initialRegion,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return null;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر فتح محدد منطقة الجزء.')),
+      );
+      return null;
+    }
   }
 
   Future<void> _selectPartRegion(EditableTemplatePart part) async {
@@ -711,25 +743,10 @@ final class _WorkspacePageState extends State<WorkspacePage> {
               onSelectPersistedImage: _selectGeneratedReference,
             ),
             const SizedBox(height: 24),
-            Text(
-              _template?.name ?? 'Template',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
             if (project.referenceImagePath == null)
               const Text(
-                'اختر صورة مرجعية قبل توليد الأجزاء.',
+                'اختر صورة مرجعية قبل المسح الذكي أو إضافة جزء يدوي.',
               ),
-            const SizedBox(height: 8),
-            FilledButton.icon(
-              onPressed: project.referenceImagePath != null &&
-                      !(batchController?.isBusy ?? false)
-                  ? () => unawaited(_generateAll())
-                  : null,
-              icon: const Icon(Icons.play_arrow),
-              label: const Text('توليد كل الأجزاء'),
-            ),
-            const SizedBox(height: 12),
             TemplateEditor(
               controller: _templateController!,
               generationState: batchController?.state ?? const {},
@@ -742,7 +759,21 @@ final class _WorkspacePageState extends State<WorkspacePage> {
               onSelectRegion: project.referenceImagePath == null
                   ? null
                   : _selectPartRegion,
+              onPickManualRegion: project.referenceImagePath == null
+                  ? null
+                  : _pickManualRegion,
             ),
+            if (_templateController!.parts.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: project.referenceImagePath != null &&
+                        !(batchController?.isBusy ?? false)
+                    ? () => unawaited(_generateAll())
+                    : null,
+                icon: const Icon(Icons.play_arrow),
+                label: const Text('توليد الأجزاء المختارة'),
+              ),
+            ],
             const SizedBox(height: 24),
             if (widget.referenceImageRepository is DirectModelImageRepository) ...[
               DirectModelImagePicker(

@@ -11,6 +11,7 @@ enum SmartPartKind {
   rightLegDetached,
   leftLegDetached,
   feetShoes,
+  clothingOutfit,
   accessory,
   custom,
 }

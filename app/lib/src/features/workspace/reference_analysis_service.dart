@@ -240,8 +240,8 @@ final class MlKitReferenceAnalysisService implements ReferenceAnalysisService {
         suggestions.add(
           SuggestedPart(
             key: 'clothing_outfit',
-            label: 'Clothing / Outfit',
-            kind: SmartPartKind.accessory,
+            label: 'الملابس / الزي',
+            kind: SmartPartKind.clothingOutfit,
             prompt: PartPromptProfiles.clothingOutfit,
             region: clothingRegion,
           ),

@@ -112,16 +112,17 @@ final class TemplateEditorController extends ChangeNotifier {
     required String label,
     required String promptFragment,
     PartPromptMode promptMode = PartPromptMode.exact,
+    SmartPartKind? kind,
     NormalizedRegion? region,
   }) {
     final normalizedLabel = label.trim();
     var normalizedPrompt = promptFragment.trim();
     if (normalizedLabel.isEmpty) return false;
 
-    final kind = PartKindClassifier.classify(normalizedLabel);
+    final resolvedKind = kind ?? PartKindClassifier.classify(normalizedLabel);
     if (promptMode == PartPromptMode.smart) {
       normalizedPrompt = PartPromptProfiles.build(
-        kind,
+        resolvedKind,
         userInstructions:
             normalizedPrompt.isEmpty ? null : normalizedPrompt,
       );
@@ -134,7 +135,7 @@ final class TemplateEditorController extends ChangeNotifier {
         label: normalizedLabel,
         promptFragment: normalizedPrompt,
         enabled: true,
-        kind: kind,
+        kind: resolvedKind,
         promptMode: promptMode,
         region: region,
       ),
@@ -208,6 +209,7 @@ final class TemplateEditor extends StatefulWidget {
     this.onRetry,
     this.onGenerate,
     this.onSelectRegion,
+    this.onPickManualRegion,
   });
 
   final TemplateEditorController controller;
@@ -215,6 +217,8 @@ final class TemplateEditor extends StatefulWidget {
   final ValueChanged<String>? onRetry;
   final ValueChanged<String>? onGenerate;
   final Future<void> Function(EditableTemplatePart part)? onSelectRegion;
+  final Future<NormalizedRegion?> Function(NormalizedRegion? initialRegion)?
+      onPickManualRegion;
 
   @override
   State<TemplateEditor> createState() => _TemplateEditorState();
@@ -224,7 +228,45 @@ final class _TemplateEditorState extends State<TemplateEditor> {
   final _labelController = TextEditingController();
   final _promptController = TextEditingController();
   PartPromptMode _newPartMode = PartPromptMode.smart;
+  SmartPartKind? _newPartKind;
+  NormalizedRegion? _newPartRegion;
   String? _error;
+
+  static const _manualSmartKinds = <SmartPartKind>[
+    SmartPartKind.fullBodyAPose,
+    SmartPartKind.headClean,
+    SmartPartKind.hairHeadwear,
+    SmartPartKind.faceOnly,
+    SmartPartKind.torsoFront,
+    SmartPartKind.rightArmDetached,
+    SmartPartKind.leftArmDetached,
+    SmartPartKind.rightHandOpen,
+    SmartPartKind.leftHandOpen,
+    SmartPartKind.rightLegDetached,
+    SmartPartKind.leftLegDetached,
+    SmartPartKind.feetShoes,
+    SmartPartKind.clothingOutfit,
+    SmartPartKind.accessory,
+    SmartPartKind.custom,
+  ];
+
+  String _arabicKindLabel(SmartPartKind kind) => switch (kind) {
+        SmartPartKind.fullBodyAPose => 'جسم كامل',
+        SmartPartKind.headClean => 'رأس',
+        SmartPartKind.hairHeadwear => 'شعر / غطاء رأس',
+        SmartPartKind.faceOnly => 'وجه',
+        SmartPartKind.torsoFront => 'جذع',
+        SmartPartKind.rightArmDetached => 'ذراع يمنى',
+        SmartPartKind.leftArmDetached => 'ذراع يسرى',
+        SmartPartKind.rightHandOpen => 'يد يمنى',
+        SmartPartKind.leftHandOpen => 'يد يسرى',
+        SmartPartKind.rightLegDetached => 'ساق يمنى',
+        SmartPartKind.leftLegDetached => 'ساق يسرى',
+        SmartPartKind.feetShoes => 'أحذية / قدم',
+        SmartPartKind.clothingOutfit => 'ملابس / زي',
+        SmartPartKind.accessory => 'إكسسوار',
+        SmartPartKind.custom => 'جزء آخر',
+      };
 
   @override
   void initState() {
@@ -350,11 +392,46 @@ final class _TemplateEditorState extends State<TemplateEditor> {
     promptController.dispose();
   }
 
+  Future<void> _pickManualRegion() async {
+    final picker = widget.onPickManualRegion;
+    if (picker == null) {
+      setState(() => _error = 'اختر صورة مرجعية أولًا.');
+      return;
+    }
+
+    final region = await picker(_newPartRegion);
+    if (!mounted || region == null) return;
+
+    setState(() {
+      _newPartRegion = region;
+      _error = null;
+    });
+  }
+
+  void _selectManualKind(SmartPartKind kind) {
+    setState(() {
+      _newPartKind = kind;
+      _labelController.text = _arabicKindLabel(kind);
+      _error = null;
+    });
+  }
+
   void _addPart() {
+    if (_newPartRegion == null) {
+      setState(() => _error = 'حدد الجزء من الصورة أولًا.');
+      return;
+    }
+    if (_newPartMode == PartPromptMode.smart && _newPartKind == null) {
+      setState(() => _error = 'اختر نوع الجزء الذي حددته.');
+      return;
+    }
+
     final added = widget.controller.addCustomPart(
       label: _labelController.text,
       promptFragment: _promptController.text,
       promptMode: _newPartMode,
+      kind: _newPartKind,
+      region: _newPartRegion,
     );
     if (!added) {
       setState(
@@ -367,7 +444,11 @@ final class _TemplateEditorState extends State<TemplateEditor> {
 
     _labelController.clear();
     _promptController.clear();
-    setState(() => _error = null);
+    setState(() {
+      _newPartKind = null;
+      _newPartRegion = null;
+      _error = null;
+    });
   }
 
   @override
@@ -375,46 +456,48 @@ final class _TemplateEditorState extends State<TemplateEditor> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'الأجزاء المطلوبة',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 8),
-        ReorderableListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: widget.controller.parts.length,
-          onReorderItem: widget.controller.reorder,
-          itemBuilder: (context, index) {
-            final part = widget.controller.parts[index];
-            return PartRequestTile(
-              key: ValueKey(part.key),
-              label: part.label,
-              promptFragment: part.promptFragment,
-              enabled: part.enabled,
-              generationState: widget.generationState[part.key],
-              onRetry: widget.onRetry == null
-                  ? null
-                  : () => widget.onRetry!(part.key),
-              onGenerate: widget.onGenerate == null
-                  ? null
-                  : () => widget.onGenerate!(part.key),
-              onEdit: () => _editPart(part),
-              promptMode: part.promptMode,
-              hasRegion: part.region != null,
-              onSelectRegion: widget.onSelectRegion == null
-                  ? null
-                  : () => widget.onSelectRegion!(part),
-              onRebuildSmartPrompt: part.promptMode == PartPromptMode.smart
-                  ? () => widget.controller.rebuildSmartPrompt(part.key)
-                  : null,
-              onEnabledChanged: (enabled) {
-                widget.controller.setEnabled(part.key, enabled);
-              },
-            );
-          },
-        ),
-        const SizedBox(height: 12),
+        if (widget.controller.parts.isNotEmpty) ...[
+          Text(
+            'الأجزاء المختارة',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          ReorderableListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: widget.controller.parts.length,
+            onReorderItem: widget.controller.reorder,
+            itemBuilder: (context, index) {
+              final part = widget.controller.parts[index];
+              return PartRequestTile(
+                key: ValueKey(part.key),
+                label: part.label,
+                promptFragment: part.promptFragment,
+                enabled: part.enabled,
+                generationState: widget.generationState[part.key],
+                onRetry: widget.onRetry == null
+                    ? null
+                    : () => widget.onRetry!(part.key),
+                onGenerate: widget.onGenerate == null
+                    ? null
+                    : () => widget.onGenerate!(part.key),
+                onEdit: () => _editPart(part),
+                promptMode: part.promptMode,
+                hasRegion: part.region != null,
+                onSelectRegion: widget.onSelectRegion == null
+                    ? null
+                    : () => widget.onSelectRegion!(part),
+                onRebuildSmartPrompt: part.promptMode == PartPromptMode.smart
+                    ? () => widget.controller.rebuildSmartPrompt(part.key)
+                    : null,
+                onEnabledChanged: (enabled) {
+                  widget.controller.setEnabled(part.key, enabled);
+                },
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+        ],
         Text(
           'إضافة جزء يدوي',
           style: Theme.of(context).textTheme.titleMedium,
@@ -425,25 +508,63 @@ final class _TemplateEditorState extends State<TemplateEditor> {
             ButtonSegment(
               value: PartPromptMode.smart,
               icon: Icon(Icons.auto_awesome),
-              label: Text('Smart Prompt'),
+              label: Text('برومبت ذكي'),
             ),
             ButtonSegment(
               value: PartPromptMode.exact,
               icon: Icon(Icons.text_fields),
-              label: Text('Exact Prompt'),
+              label: Text('برومبت مباشر'),
             ),
           ],
           selected: {_newPartMode},
           onSelectionChanged: (selection) {
-            setState(() => _newPartMode = selection.single);
+            setState(() {
+              _newPartMode = selection.single;
+              _error = null;
+            });
           },
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          key: const Key('manual-region-picker'),
+          onPressed: widget.onPickManualRegion == null ? null : _pickManualRegion,
+          icon: Icon(
+            _newPartRegion == null ? Icons.crop_free : Icons.check_circle_outline,
+          ),
+          label: Text(
+            _newPartRegion == null
+                ? 'تحديد الجزء من الصورة'
+                : 'تعديل التحديد من الصورة',
+          ),
+        ),
+        if (_newPartRegion != null) ...[
+          const SizedBox(height: 8),
+          const Text('تم تحديد منطقة من الصورة.'),
+          if (_newPartMode == PartPromptMode.smart) ...[
+            const SizedBox(height: 10),
+            const Text('ما الذي حددته؟ اختر النوع ليُكتب البرومبت المناسب تلقائيًا:'),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: _manualSmartKinds
+                  .map(
+                    (kind) => ChoiceChip(
+                      label: Text(_arabicKindLabel(kind)),
+                      selected: _newPartKind == kind,
+                      onSelected: (_) => _selectManualKind(kind),
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
+          ],
+        ],
+        const SizedBox(height: 10),
         TextField(
           controller: _labelController,
           decoration: const InputDecoration(
             labelText: 'اسم الجزء',
-            hintText: 'مثال: bandaged neck أو Arm with shoulder',
+            hintText: 'مثال: ضمادات الرقبة أو ذراع مع الكتف',
             border: OutlineInputBorder(),
           ),
         ),
@@ -455,9 +576,9 @@ final class _TemplateEditorState extends State<TemplateEditor> {
           decoration: InputDecoration(
             labelText: _newPartMode == PartPromptMode.smart
                 ? 'تعليمات إضافية (اختياري)'
-                : 'Exact Prompt — سيُرسل كما كتبته',
+                : 'البرومبت المباشر — سيُرسل كما كتبته',
             hintText: _newPartMode == PartPromptMode.smart
-                ? 'اتركه فارغًا لبناء Prompt ذكي من اسم الجزء'
+                ? 'اختياري: أضف تفاصيل خاصة بالجزء'
                 : 'اكتب البرومبت كاملًا هنا',
             border: const OutlineInputBorder(),
           ),
