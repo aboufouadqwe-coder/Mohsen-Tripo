@@ -28,6 +28,13 @@ void main() {
     expect(PartKindClassifier.classify('ملابس / زي'), SmartPartKind.clothingOutfit);
   });
 
+  test('Arabic hair/headwear label is not misclassified as head', () {
+    expect(
+      PartKindClassifier.classify('شعر / غطاء رأس'),
+      SmartPartKind.hairHeadwear,
+    );
+  });
+
   test('clean head prompt removes hair and eyelashes', () {
     final head = PartPromptProfiles.build(SmartPartKind.headClean);
 
