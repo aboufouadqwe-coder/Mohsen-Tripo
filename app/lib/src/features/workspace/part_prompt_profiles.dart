@@ -129,11 +129,11 @@ abstract final class PartKindClassifier {
     if (_hasAny(value, const ['full body', 'body', 'جسم كامل', 'الجسم'])) {
       return SmartPartKind.fullBodyAPose;
     }
-    if (_hasAny(value, const ['head', 'metahuman head', 'رأس', 'راس'])) {
-      return SmartPartKind.headClean;
-    }
     if (_hasAny(value, const ['hair', 'headwear', 'hat', 'cap', 'شعر', 'قبعة', 'غطاء'])) {
       return SmartPartKind.hairHeadwear;
+    }
+    if (_hasAny(value, const ['head', 'metahuman head', 'رأس', 'راس'])) {
+      return SmartPartKind.headClean;
     }
     if (_hasAny(value, const ['face', 'وجه'])) return SmartPartKind.faceOnly;
     if (_hasAny(value, const ['torso', 'chest', 'جذع', 'صدر'])) {
