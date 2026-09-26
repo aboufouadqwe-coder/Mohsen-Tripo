@@ -40,7 +40,8 @@ const baseDeps = {
           provider: "tripo",
           providerTaskId: "task-image-1",
           operation: "image_to_image",
-          providerCredentialFingerprint: null,
+          providerCredentialFingerprint:
+            "1b7481b574f896af088a0565fdf72c97b5b31bc2ea5daf76d6af45120c42b834",
         }
         : null,
     ),
@@ -115,6 +116,41 @@ Deno.test("generate-model prefers prior Tripo image task id", async () => {
   assertEquals(providerInput, "task-image-1");
 });
 
+
+Deno.test("generate-model uploads legacy image instead of reusing a task from unknown credential", async () => {
+  let uploaded = false;
+  let providerInput = "";
+  const handler = createGenerateModelHandler({
+    ...baseDeps,
+    findOwnedGenerationJob: (_userId: string, jobId: string) =>
+      Promise.resolve(
+        jobId === "image-job-1"
+          ? {
+            id: jobId,
+            provider: "tripo",
+            providerTaskId: "task-image-legacy",
+            operation: "image_to_image",
+            providerCredentialFingerprint: null,
+          }
+          : null,
+      ),
+    uploadImageToProvider: (_apiKey: string, url: string) => {
+      uploaded = true;
+      assertEquals(url, "https://signed.test/head.png");
+      return Promise.resolve("file_token_current_key");
+    },
+    createImageToModel: (_apiKey: string, input) => {
+      providerInput = input.input;
+      return Promise.resolve("task-model-1");
+    },
+  });
+
+  const response = await handler(request({ asset_result_id: "asset-1" }));
+
+  assertEquals(response.status, 202);
+  assertEquals(uploaded, true);
+  assertEquals(providerInput, "file_token_current_key");
+});
 
 Deno.test("generate-model maps low-poly quad settings to P2", async () => {
   let providerRequest: Record<string, unknown> = {};
