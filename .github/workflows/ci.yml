@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_release:
+        description: "Also build, scan, and upload the release APK"
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  flutter:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: https://zzsjejluvufjtaxsqjme.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_nL_A-yNI-RIJMEHkna3cdg_DZ6pBAUq
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.0
+          channel: stable
+          cache: true
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Verify dependency lockfile
+        run: git diff --exit-code pubspec.lock
+      - name: Analyze
+        run: flutter analyze
+      - name: Test
+        run: flutter test
+      - name: Verify Android minimum SDK
+        run: grep -F 'minSdk = 24' android/app/build.gradle.kts
+      - name: Reject backend secret marker from Android source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -n --binary-files=without-match -F 'TRIPO_API_KEY' \
+            lib android pubspec.yaml; then
+            echo 'TRIPO_API_KEY must never be referenced by the Android client.'
+            exit 1
+          fi
+      - name: Build release APK against hosted free Supabase
+        if: inputs.build_release
+        run: |
+          flutter build apk --release \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
+      - name: Verify release APK excludes backend secret marker
+        if: inputs.build_release
+        shell: bash
+        run: |
+          set -euo pipefail
+          scan_dir="$(mktemp -d)"
+          unzip -q build/app/outputs/flutter-apk/app-release.apk -d "$scan_dir"
+          if grep -R -a -F 'TRIPO_API_KEY' "$scan_dir"; then
+            echo 'Backend secret marker found in release APK.'
+            exit 1
+          fi
+      - name: Upload release APK
+        if: inputs.build_release
+        uses: actions/upload-artifact@v4
+        with:
+          name: mohsen-tripo-android-release
+          path: app/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 3
