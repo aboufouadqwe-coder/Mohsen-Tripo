@@ -1,4 +1,4 @@
-name: Verify and release smart part planner APK
+name: Verify and release local Tripo credential APK
 
 on:
   push:
@@ -13,8 +13,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: android-mvp-smart-parts-${{ github.ref }}
-  cancel-in-progress: true
+  group: android-mvp-local-credential-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   verify-build-release:
@@ -61,7 +61,7 @@ jobs:
       - name: Upload release APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mohsen-tripo-smart-part-planner
+          name: mohsen-tripo-local-credential-direct-3d
           path: app/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           retention-days: 30
@@ -70,10 +70,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="android-mvp-smart-parts-${GITHUB_SHA::7}"
-          cp app/build/app/outputs/flutter-apk/app-release.apk /tmp/Mohsen-Tripo-smart-part-planner.apk
-          gh release create "$TAG" /tmp/Mohsen-Tripo-smart-part-planner.apk \
+          TAG="android-mvp-local-tripo-${GITHUB_SHA::7}"
+          cp app/build/app/outputs/flutter-apk/app-release.apk /tmp/Mohsen-Tripo-local-tripo-direct-3d.apk
+          gh release create "$TAG" /tmp/Mohsen-Tripo-local-tripo-direct-3d.apk \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Mohsen-Tripo Smart Part Planner" \
-            --notes "Adds on-device face/pose analysis, Smart Part Planner suggestions, MetaHuman-ready smart prompt profiles, Exact/Smart prompt modes, manual rectangular part-region selection and per-part cropped references. Preserves sequential multi-part generation, timers, credits, 3D mesh controls, viewer, and download fixes."
+            --title "Mohsen-Tripo Local Tripo Account + Direct Image to 3D" \
+            --notes "Adds secure on-device Tripo API key storage, Chrome/manual account connection with clipboard key import and live balance validation, per-job credential fingerprint routing, and optional phone image to 3D generation. Preserves Smart Part Planner, sequential generation, timers, mesh controls, viewer, and downloads."
