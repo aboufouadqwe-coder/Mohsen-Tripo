@@ -101,14 +101,14 @@ final class ModelGenerationController extends ChangeNotifier {
   }) async {
     if (_disposed || isBusy) return;
 
-    final directGateway = gateway;
-    if (directGateway is! DirectModelGenerationGateway ||
+    if (gateway is! DirectModelGenerationGateway ||
         projectId.trim().isEmpty ||
         referenceStoragePath.trim().isEmpty) {
       errorCode = 'direct_image_unavailable';
       _notify();
       return;
     }
+    final directGateway = gateway as DirectModelGenerationGateway;
 
     isBusy = true;
     activeAssetResultId = null;
