@@ -285,8 +285,7 @@ export function createGenerateModelHandler(
 
         canReuseProviderTask = sourceJob.provider === "tripo" &&
           Boolean(sourceJob.providerTaskId?.trim().length) &&
-          (sourceJob.providerCredentialFingerprint === null ||
-            sourceJob.providerCredentialFingerprint === credential.fingerprint);
+          sourceJob.providerCredentialFingerprint === credential.fingerprint;
 
         if (canReuseProviderTask) {
           providerInput = sourceJob.providerTaskId!;
