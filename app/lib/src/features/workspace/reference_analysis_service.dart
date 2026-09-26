@@ -143,7 +143,7 @@ final class MlKitReferenceAnalysisService implements ReferenceAnalysisService {
       suggestions.add(
         SuggestedPart(
           key: 'full_body_apose',
-          label: 'Full Body A-Pose',
+          label: 'جسم كامل A-Pose',
           kind: SmartPartKind.fullBodyAPose,
           prompt: PartPromptProfiles.build(SmartPartKind.fullBodyAPose),
           region: _regionFromPoints(
@@ -174,7 +174,7 @@ final class MlKitReferenceAnalysisService implements ReferenceAnalysisService {
       suggestions.add(
         SuggestedPart(
           key: 'head',
-          label: 'Head Clean / Bald',
+          label: 'رأس نظيف / أصلع',
           kind: SmartPartKind.headClean,
           prompt: PartPromptProfiles.build(SmartPartKind.headClean),
           region: headRegion,
@@ -183,7 +183,7 @@ final class MlKitReferenceAnalysisService implements ReferenceAnalysisService {
       suggestions.add(
         SuggestedPart(
           key: 'hair_headwear',
-          label: 'Hair / Headwear',
+          label: 'شعر / غطاء رأس',
           kind: SmartPartKind.hairHeadwear,
           prompt: PartPromptProfiles.build(SmartPartKind.hairHeadwear),
           enabled: false,
@@ -194,7 +194,7 @@ final class MlKitReferenceAnalysisService implements ReferenceAnalysisService {
         suggestions.add(
           SuggestedPart(
             key: 'face_only',
-            label: 'Face Only',
+            label: 'الوجه فقط',
             kind: SmartPartKind.faceOnly,
             prompt: PartPromptProfiles.build(SmartPartKind.faceOnly),
             enabled: false,
@@ -208,7 +208,7 @@ final class MlKitReferenceAnalysisService implements ReferenceAnalysisService {
       suggestions.add(
         SuggestedPart(
           key: 'torso',
-          label: 'Torso',
+          label: 'الجذع',
           kind: SmartPartKind.torsoFront,
           prompt: PartPromptProfiles.build(SmartPartKind.torsoFront),
           region: poseRegion(
@@ -255,7 +255,7 @@ final class MlKitReferenceAnalysisService implements ReferenceAnalysisService {
       suggestions.add(
         SuggestedPart(
           key: 'head',
-          label: 'Head Clean / Bald',
+          label: 'رأس نظيف / أصلع',
           kind: SmartPartKind.headClean,
           prompt: PartPromptProfiles.build(SmartPartKind.headClean),
           enabled: false,
@@ -301,7 +301,7 @@ final class MlKitReferenceAnalysisService implements ReferenceAnalysisService {
 
     add(
       key: 'right_arm',
-      label: 'Right Arm',
+      label: 'الذراع اليمنى',
       kind: SmartPartKind.rightArmDetached,
       points: const [
         PoseLandmarkType.rightShoulder,
@@ -312,7 +312,7 @@ final class MlKitReferenceAnalysisService implements ReferenceAnalysisService {
     );
     add(
       key: 'left_arm',
-      label: 'Left Arm',
+      label: 'الذراع اليسرى',
       kind: SmartPartKind.leftArmDetached,
       points: const [
         PoseLandmarkType.leftShoulder,
@@ -323,7 +323,7 @@ final class MlKitReferenceAnalysisService implements ReferenceAnalysisService {
     );
     add(
       key: 'right_hand',
-      label: 'Right Hand',
+      label: 'اليد اليمنى',
       kind: SmartPartKind.rightHandOpen,
       points: const [
         PoseLandmarkType.rightWrist,
@@ -335,7 +335,7 @@ final class MlKitReferenceAnalysisService implements ReferenceAnalysisService {
     );
     add(
       key: 'left_hand',
-      label: 'Left Hand',
+      label: 'اليد اليسرى',
       kind: SmartPartKind.leftHandOpen,
       points: const [
         PoseLandmarkType.leftWrist,
@@ -347,7 +347,7 @@ final class MlKitReferenceAnalysisService implements ReferenceAnalysisService {
     );
     add(
       key: 'right_leg',
-      label: 'Right Leg',
+      label: 'الساق اليمنى',
       kind: SmartPartKind.rightLegDetached,
       points: const [
         PoseLandmarkType.rightHip,
@@ -358,7 +358,7 @@ final class MlKitReferenceAnalysisService implements ReferenceAnalysisService {
     );
     add(
       key: 'left_leg',
-      label: 'Left Leg',
+      label: 'الساق اليسرى',
       kind: SmartPartKind.leftLegDetached,
       points: const [
         PoseLandmarkType.leftHip,
@@ -383,7 +383,7 @@ final class MlKitReferenceAnalysisService implements ReferenceAnalysisService {
       suggestions.add(
         SuggestedPart(
           key: 'feet_shoes',
-          label: 'Feet / Shoes',
+          label: 'الأحذية / القدم',
           kind: SmartPartKind.feetShoes,
           prompt: PartPromptProfiles.build(SmartPartKind.feetShoes),
           region: feet,

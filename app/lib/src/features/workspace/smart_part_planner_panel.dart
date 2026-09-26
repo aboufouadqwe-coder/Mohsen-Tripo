@@ -53,14 +53,32 @@ final class _SmartPartPlannerPanelState extends State<SmartPartPlannerPanel> {
     if (analysis == null) return;
     widget.onApply(
       analysis.suggestions
-          .map(
-            (suggestion) => suggestion.copyWith(
-              enabled: _enabled[suggestion.key] ?? suggestion.enabled,
-            ),
+          .where(
+            (suggestion) =>
+                _enabled[suggestion.key] ?? suggestion.enabled,
           )
+          .map((suggestion) => suggestion.copyWith(enabled: true))
           .toList(growable: false),
     );
   }
+
+  String _arabicKindLabel(SmartPartKind kind) => switch (kind) {
+        SmartPartKind.fullBodyAPose => 'جسم كامل A-Pose',
+        SmartPartKind.headClean => 'رأس نظيف / أصلع',
+        SmartPartKind.hairHeadwear => 'شعر / غطاء رأس',
+        SmartPartKind.faceOnly => 'الوجه فقط',
+        SmartPartKind.torsoFront => 'الجذع',
+        SmartPartKind.rightArmDetached => 'الذراع اليمنى',
+        SmartPartKind.leftArmDetached => 'الذراع اليسرى',
+        SmartPartKind.rightHandOpen => 'اليد اليمنى',
+        SmartPartKind.leftHandOpen => 'اليد اليسرى',
+        SmartPartKind.rightLegDetached => 'الساق اليمنى',
+        SmartPartKind.leftLegDetached => 'الساق اليسرى',
+        SmartPartKind.feetShoes => 'الأحذية / القدم',
+        SmartPartKind.clothingOutfit => 'الملابس / الزي',
+        SmartPartKind.accessory => 'إكسسوار',
+        SmartPartKind.custom => 'جزء مخصص',
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -121,10 +139,10 @@ final class _SmartPartPlannerPanelState extends State<SmartPartPlannerPanel> {
                   Chip(
                     label: Text(
                       analysis.isFullBody
-                          ? 'Full Body'
+                          ? 'جسم كامل'
                           : analysis.hasUpperBody
-                              ? 'Upper Body'
-                              : 'Portrait/Partial',
+                              ? 'جزء علوي'
+                              : 'صورة جزئية / وجه',
                     ),
                   ),
                 ],
@@ -143,11 +161,11 @@ final class _SmartPartPlannerPanelState extends State<SmartPartPlannerPanel> {
                         ? Icons.auto_awesome
                         : Icons.crop_free,
                   ),
-                  title: Text(part.label),
+                  title: Text(_arabicKindLabel(part.kind)),
                   subtitle: Text(
-                    part.prompt,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    part.region == null
+                        ? 'اقتراح ذكي — المنطقة غير مؤكدة'
+                        : 'تم تحديد المنطقة تلقائيًا من الصورة',
                   ),
                 ),
               ),
@@ -155,7 +173,7 @@ final class _SmartPartPlannerPanelState extends State<SmartPartPlannerPanel> {
               FilledButton.tonalIcon(
                 onPressed: _apply,
                 icon: const Icon(Icons.playlist_add_check),
-                label: const Text('تطبيق الاقتراحات على قائمة الأجزاء'),
+                label: const Text('اعتماد الأجزاء المحددة'),
               ),
             ],
           ],

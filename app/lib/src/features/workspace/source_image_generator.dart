@@ -29,11 +29,40 @@ final class _SourceImageGeneratorState extends State<SourceImageGenerator> {
   bool _busy = false;
   String? _error;
   GenerationJob? _job;
+  final Stopwatch _elapsedStopwatch = Stopwatch();
+  Timer? _elapsedTimer;
 
   @override
   void dispose() {
+    _elapsedTimer?.cancel();
+    _elapsedStopwatch.stop();
     _promptController.dispose();
     super.dispose();
+  }
+
+  void _startElapsedTimer() {
+    _elapsedTimer?.cancel();
+    _elapsedStopwatch
+      ..reset()
+      ..start();
+    _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  void _stopElapsedTimer() {
+    _elapsedTimer?.cancel();
+    _elapsedTimer = null;
+    _elapsedStopwatch.stop();
+  }
+
+  String _formatElapsed(Duration value) {
+    final minutes = value.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = value.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final hours = value.inHours;
+    return hours > 0
+        ? '${hours.toString().padLeft(2, '0')}:$minutes:$seconds'
+        : '$minutes:$seconds';
   }
 
   bool _isPersistedImage(GenerationJob? job) {
@@ -68,6 +97,7 @@ final class _SourceImageGeneratorState extends State<SourceImageGenerator> {
       _error = null;
       _job = null;
     });
+    _startElapsedTimer();
 
     _capture(
       AnalyticsEvents.generationStarted,
@@ -126,6 +156,7 @@ final class _SourceImageGeneratorState extends State<SourceImageGenerator> {
       );
       if (mounted) setState(() => _error = 'تعذر إنشاء الصورة المرجعية.');
     } finally {
+      _stopElapsedTimer();
       if (mounted) setState(() => _busy = false);
     }
   }
@@ -152,11 +183,23 @@ final class _SourceImageGeneratorState extends State<SourceImageGenerator> {
           icon: const Icon(Icons.auto_awesome),
           label: const Text('إنشاء صورة مرجعية'),
         ),
+        if (_busy || _elapsedStopwatch.elapsed > Duration.zero) ...[
+          const SizedBox(height: 10),
+          Text('الوقت المنقضي: ${_formatElapsed(_elapsedStopwatch.elapsed)}'),
+        ],
         if (job != null) ...[
           const SizedBox(height: 12),
-          LinearProgressIndicator(value: _progressValue(job.progress)),
+          LinearProgressIndicator(
+            value: !job.isTerminal && job.progress <= 0
+                ? null
+                : _progressValue(job.progress),
+          ),
           const SizedBox(height: 4),
-          Text('التقدم: ${(job.progress * 100).round()}%'),
+          Text(
+            !job.isTerminal && job.progress <= 0
+                ? 'التقدم: جارٍ التوليد…'
+                : 'التقدم: ${(job.progress * 100).round()}%',
+          ),
         ],
         if (_error != null) ...[
           const SizedBox(height: 8),

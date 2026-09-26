@@ -23,6 +23,60 @@ final class RecordingReferenceRepository
     uploadCalls += 1;
     return '$userId/$projectId/reference.$extension';
   }
+  testWidgets('source generation shows elapsed time without fake zero percent progress',
+      (tester) async {
+    final gateway = FakeGenerationGateway([
+      const GenerationJob(
+        id: 'job-source-1',
+        projectId: 'project-1',
+        provider: 'tripo',
+        operation: GenerationOperation.textToImage,
+        status: GenerationStatus.running,
+        progress: 0,
+      ),
+      const GenerationJob(
+        id: 'job-source-1',
+        projectId: 'project-1',
+        provider: 'tripo',
+        operation: GenerationOperation.textToImage,
+        status: GenerationStatus.success,
+        progress: 1,
+        assetResultId: 'asset-1',
+        storagePath: 'user-1/project-1/source.png',
+        mimeType: 'image/png',
+      ),
+    ]);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SourceImageGenerator(
+            projectId: 'project-1',
+            gateway: gateway,
+            pollInterval: const Duration(seconds: 1),
+            onSelectPersistedImage: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('source-prompt')),
+      'hospital patient',
+    );
+    await tester.tap(find.text('إنشاء صورة مرجعية'));
+    await tester.pump();
+
+    expect(find.textContaining('الوقت المنقضي:'), findsOneWidget);
+    expect(find.text('التقدم: جارٍ التوليد…'), findsOneWidget);
+    expect(find.text('التقدم: 0%'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+
+    expect(find.text('التقدم: 100%'), findsOneWidget);
+  });
+
 }
 
 final class FakeGenerationGateway implements GenerationGateway {
