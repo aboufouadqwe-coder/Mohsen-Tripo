@@ -50,6 +50,78 @@ type GenerateImagePartDeps = {
   insertJob: (input: Record<string, unknown>) => Promise<string>;
 };
 
+
+const metaHumanSmartPartKeys = new Set([
+  "full_body_apose",
+  "head",
+  "face_only",
+  "hair_headwear",
+  "torso",
+  "right_arm",
+  "left_arm",
+  "right_hand",
+  "left_hand",
+  "right_leg",
+  "left_leg",
+  "feet_shoes",
+  "upper_clothing",
+  "lower_clothing",
+  "clothing_outfit",
+]);
+
+function clippedInstruction(value: string, maxCharacters = 900): string {
+  return Array.from(value).slice(0, maxCharacters).join("");
+}
+
+function buildMetaHumanSmartPartPrompt(
+  partKey: string,
+  partLabel: string,
+  sourcePrompt: string,
+): string {
+  const key = partKey.trim().toLowerCase();
+  if (!metaHumanSmartPartKeys.has(key)) return sourcePrompt;
+
+  let isolationRule: string;
+
+  if (key === "head" || key === "face_only") {
+    isolationRule =
+      "ANATOMY ONLY: output the clean character head/face as skin anatomy. Remove all hair, eyelashes, headwear, jewelry, clothing, collars, bandages/wraps, and detachable accessories. Keep facial identity, skin tone, proportions, scars/wounds that belong to skin, neutral expression, eyes open and mouth closed. For head output, keep it bald with ears and a short upper-neck connection.";
+  } else if (key === "hair_headwear") {
+    isolationRule =
+      "SEPARATE WEARABLE ASSET ONLY: output only the hair and/or headwear visible in the reference. Do not render face, scalp skin, neck, torso, or clothing. Treat the body/head only as invisible fit context. Preserve silhouette, material, color, damage and placement.";
+  } else if (
+    key === "upper_clothing" ||
+    key === "lower_clothing" ||
+    key === "clothing_outfit"
+  ) {
+    isolationRule =
+      "CLOTHING ASSET ONLY: output only the requested garment(s) as separate empty wearable geometry. Do not render skin, body anatomy, head, hands, feet, hair or unrelated accessories. Preserve the exact garment silhouette, seams, folds, tears, stains, material, color and fit from the reference.";
+  } else if (key === "feet_shoes") {
+    isolationRule =
+      "FOOTWEAR ASSET ONLY: output only the shoes/footwear as separate wearable assets. Do not render feet, leg skin, trousers or other body geometry. Preserve exact shape, sole, laces, wear, stains, damage, material and scale.";
+  } else if (key === "right_arm" || key === "left_arm") {
+    isolationRule =
+      "BARE ANATOMY ONLY: output the complete requested arm from shoulder attachment through fingertips with skin visible. Remove sleeves, gloves, bandages/wraps, jewelry and every clothing/accessory layer. Preserve limb proportions, skin tone and skin-only scars/wounds. Keep the arm isolated from the torso and keep all fingers clearly separated.";
+  } else if (key === "right_hand" || key === "left_hand") {
+    isolationRule =
+      "BARE ANATOMY ONLY: output only the requested bare hand with a short wrist connection. Remove gloves, bandages/wraps, jewelry and clothing. Preserve hand proportions, skin tone and skin-only scars/wounds. Use a relaxed open hand with every finger clearly separated.";
+  } else if (key === "right_leg" || key === "left_leg") {
+    isolationRule =
+      "BARE ANATOMY ONLY: output the complete requested leg as skin anatomy. Remove trousers, socks, shoes, bandages/wraps and every clothing/accessory layer. Preserve proportions, skin tone and skin-only scars/wounds. Keep the leg isolated with a clean readable silhouette.";
+  } else {
+    isolationRule =
+      "BASE BODY ONLY: create a clean unclothed MetaHuman-conform anatomy reference. Remove all clothing, underwear, shoes, gloves, bandages/wraps, jewelry, hair, headwear and detachable accessories. Preserve the character's overall body proportions, silhouette and skin tone. Use a smooth neutral mannequin-like skin surface with no explicit sexual anatomy, no nipples and no genital detail. Front-facing A-pose, arms clearly away from the torso with visible armpit gaps, legs slightly separated, hands visible and all fingers separated, feet fully visible.";
+  }
+
+  return [
+    "MetaHuman asset-isolation task. The separation rules below override any conflicting request to preserve costume or overlapping accessories.",
+    `Requested asset: ${partLabel.trim()}.`,
+    isolationRule,
+    `Source guidance: ${clippedInstruction(sourcePrompt)}`,
+    "Keep the requested asset centered, complete, uncropped and clearly separated on a plain neutral background. Do not include unrelated geometry.",
+  ].join("\n");
+}
+
 export function createGenerateImagePartHandler(
   deps: GenerateImagePartDeps,
 ): (request: Request) => Promise<Response> {
@@ -121,7 +193,7 @@ export function createGenerateImagePartHandler(
           label,
           promptFragment: exactPrompt,
         };
-        prompt = exactPrompt;
+        prompt = buildMetaHumanSmartPartPrompt(partKey, label, exactPrompt);
       } else {
         if (!project.templateId) {
           throw new HttpError(400, "missing_template", "Project requires an asset template.");

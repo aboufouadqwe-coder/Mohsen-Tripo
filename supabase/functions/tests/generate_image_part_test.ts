@@ -143,6 +143,52 @@ Deno.test("generate-image-part accepts exact client-authored prompt for custom p
   );
 });
 
+Deno.test("generate-image-part enforces bare anatomy for smart arm prompts", async () => {
+  let submittedPrompt = "";
+  const handler = createGenerateImagePartHandler({
+    ...baseDeps,
+    createImageToImage: (_apiKey: string, input: { input: string; prompt: string }) => {
+      submittedPrompt = input.prompt;
+      return Promise.resolve("task-arm-1");
+    },
+  });
+
+  const response = await handler(request({
+    project_id: "project-1",
+    part_key: "right_arm",
+    part_label: "Right Arm",
+    part_prompt:
+      "Preserve anatomy, clothing, bandages, gloves, damage and proportions from the reference.",
+  }));
+
+  assertEquals(response.status, 202);
+  assertStringIncludes(submittedPrompt, "BARE ANATOMY ONLY");
+  assertStringIncludes(submittedPrompt, "Remove sleeves, gloves, bandages/wraps");
+  assertStringIncludes(submittedPrompt, "override any conflicting request");
+});
+
+Deno.test("generate-image-part isolates smart clothing from body geometry", async () => {
+  let submittedPrompt = "";
+  const handler = createGenerateImagePartHandler({
+    ...baseDeps,
+    createImageToImage: (_apiKey: string, input: { input: string; prompt: string }) => {
+      submittedPrompt = input.prompt;
+      return Promise.resolve("task-clothing-1");
+    },
+  });
+
+  const response = await handler(request({
+    project_id: "project-1",
+    part_key: "clothing_outfit",
+    part_label: "Clothing / Outfit",
+    part_prompt: "Preserve the complete hospital outfit from the reference.",
+  }));
+
+  assertEquals(response.status, 202);
+  assertStringIncludes(submittedPrompt, "CLOTHING ASSET ONLY");
+  assertStringIncludes(submittedPrompt, "Do not render skin, body anatomy");
+});
+
 Deno.test("generate-image-part rejects incomplete direct prompt pair", async () => {
   const handler = createGenerateImagePartHandler(baseDeps);
   const response = await handler(request({

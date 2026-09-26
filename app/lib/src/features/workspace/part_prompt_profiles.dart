@@ -28,17 +28,19 @@ abstract final class PartPromptProfiles {
   }
 
   static const _fullBody =
-      'Create a clean full-body 3D character reference preserving the source identity and costume. '
-      'Front-facing A-pose, centered, both arms separated clearly from the torso and armpits visible, '
-      'legs slightly separated, hands visible with fingers separated, feet fully visible, neutral stance. '
-      'Do not crop any body part. Keep proportions and costume details accurate. '
-      'Plain neutral background, high detail, suitable as a high-quality MetaHuman/body-conform reference.';
+      'Create a clean full-body BASE ANATOMY reference for MetaHuman body conforming. '
+      'Front-facing A-pose, centered, arms clearly separated from the torso with visible armpit gaps, '
+      'legs slightly separated, hands visible with every finger separated, feet fully visible. '
+      'Remove all clothing, underwear, shoes, gloves, bandages/wraps, jewelry, hair, headwear, and detachable accessories. '
+      'Preserve body proportions, silhouette, skin tone, and skin-only scars/wounds from the source. '
+      'Use a smooth neutral mannequin-like skin surface with no explicit sexual anatomy, no nipples, and no genital detail. '
+      'Do not crop any body part. Plain neutral background, high detail, suitable for MetaHuman/body-conform reference.';
 
   static const _headClean =
       'Create a clean isolated 3D-ready character head from the source identity. '
       'Output only the bald head, ears, and upper neck. Front-facing, centered, symmetrical, neutral expression, '
-      'eyes open, mouth closed. Preserve facial identity, skin tone, facial proportions, wounds, scars, and skin detail. '
-      'Remove all hair, eyelashes, headwear, clothing, shoulders, torso, jewelry, and detachable accessories. '
+      'eyes open, mouth closed. Preserve facial identity, skin tone, facial proportions, and skin-only scars/wounds. '
+      'Remove all hair, eyelashes, headwear, bandages/wraps, jewelry, clothing, collars, shoulders, torso, and detachable accessories. '
       'Plain neutral background, clean silhouette, high detail, suitable for MetaHuman facial modeling and rigging.';
 
   static const _hairHeadwear =
@@ -53,43 +55,60 @@ abstract final class PartPromptProfiles {
       'Remove hair, headwear, clothing, shoulders, and background distractions. Plain neutral background.';
 
   static const _torso =
-      'Create an isolated front torso reference from the base of the neck to the hips. '
-      'Preserve body proportions, clothing, material, stains, tears, wounds, and silhouette. '
-      'Exclude the head, hands, forearms, legs, and unrelated accessories. Front-facing, centered, neutral background.';
+      'Create only the BARE base torso anatomy from the base of the neck to the hips. '
+      'Remove shirts, gowns, jackets, uniforms, underwear, bandages/wraps, jewelry, and every clothing/accessory layer. '
+      'Preserve body proportions, skin tone, silhouette, and skin-only scars/wounds. '
+      'Use a smooth neutral mannequin-like skin surface with no explicit sexual anatomy, no nipples, and no genital detail. '
+      'Exclude the head, hands, forearms, legs, and unrelated assets. Front-facing, centered, neutral background.';
 
   static const _rightArm =
-      'Create only the complete right arm as an isolated 3D-ready reference, from shoulder attachment to fingertips. '
-      'Keep the arm separated from the torso, preserve anatomy, clothing, damage, bandages, gloves, and proportions. '
-      'Fingers clearly separated, neutral background, no left arm or torso.';
+      'Create only the complete BARE right arm as an isolated 3D-ready anatomy reference, from shoulder attachment to fingertips. '
+      'Remove sleeves, gloves, bandages/wraps, jewelry, and every clothing/accessory layer. '
+      'Preserve arm proportions, skin tone, and skin-only scars/wounds. Keep the arm fully separated from the torso. '
+      'All fingers clearly separated, neutral background, no left arm or torso.';
 
   static const _leftArm =
-      'Create only the complete left arm as an isolated 3D-ready reference, from shoulder attachment to fingertips. '
-      'Keep the arm separated from the torso, preserve anatomy, clothing, damage, bandages, gloves, and proportions. '
-      'Fingers clearly separated, neutral background, no right arm or torso.';
+      'Create only the complete BARE left arm as an isolated 3D-ready anatomy reference, from shoulder attachment to fingertips. '
+      'Remove sleeves, gloves, bandages/wraps, jewelry, and every clothing/accessory layer. '
+      'Preserve arm proportions, skin tone, and skin-only scars/wounds. Keep the arm fully separated from the torso. '
+      'All fingers clearly separated, neutral background, no right arm or torso.';
 
   static const _rightHand =
-      'Create only the right hand as a clean isolated reference. Open relaxed hand, fingers clearly separated, '
-      'front/three-quarter readable angle, preserve skin, wounds, nails, gloves, jewelry, and proportions. '
+      'Create only the BARE right hand as a clean isolated anatomy reference with a short wrist connection. '
+      'Remove gloves, bandages/wraps, jewelry, sleeves, and accessories. '
+      'Open relaxed hand, every finger clearly separated, preserve skin tone, proportions, nails, and skin-only scars/wounds. '
       'No forearm beyond a short wrist connection, plain neutral background.';
 
   static const _leftHand =
-      'Create only the left hand as a clean isolated reference. Open relaxed hand, fingers clearly separated, '
-      'front/three-quarter readable angle, preserve skin, wounds, nails, gloves, jewelry, and proportions. '
+      'Create only the BARE left hand as a clean isolated anatomy reference with a short wrist connection. '
+      'Remove gloves, bandages/wraps, jewelry, sleeves, and accessories. '
+      'Open relaxed hand, every finger clearly separated, preserve skin tone, proportions, nails, and skin-only scars/wounds. '
       'No forearm beyond a short wrist connection, plain neutral background.';
 
   static const _rightLeg =
-      'Create only the complete right leg as an isolated reference from hip attachment to foot. '
-      'Preserve anatomy, clothing, damage, footwear, and proportions. Straight readable pose, neutral background, '
+      'Create only the complete BARE right leg as an isolated anatomy reference from hip attachment through the foot. '
+      'Remove trousers, skirts, socks, shoes, bandages/wraps, and every clothing/accessory layer. '
+      'Preserve leg proportions, skin tone, and skin-only scars/wounds. Straight readable pose, neutral background, '
       'no left leg or torso beyond minimal hip attachment.';
 
   static const _leftLeg =
-      'Create only the complete left leg as an isolated reference from hip attachment to foot. '
-      'Preserve anatomy, clothing, damage, footwear, and proportions. Straight readable pose, neutral background, '
+      'Create only the complete BARE left leg as an isolated anatomy reference from hip attachment through the foot. '
+      'Remove trousers, skirts, socks, shoes, bandages/wraps, and every clothing/accessory layer. '
+      'Preserve leg proportions, skin tone, and skin-only scars/wounds. Straight readable pose, neutral background, '
       'no right leg or torso beyond minimal hip attachment.';
 
   static const _feet =
-      'Create a clear isolated reference of the feet and footwear. Preserve exact shoe shape, materials, wear, '
-      'laces, stains, damage, skin visibility, and proportions. Both feet separated and fully visible, neutral background.';
+      'Create only the character footwear/shoes as separate wearable assets. '
+      'Do not include feet, leg skin, trousers, socks, or other body geometry. '
+      'Preserve exact shoe shape, soles, laces, materials, wear, stains, damage, scale, and left/right proportions. '
+      'Both shoes separated and fully visible on a neutral background.';
+
+  static const clothingOutfit =
+      'Create only the character clothing/outfit as separate empty wearable geometry. '
+      'Include torso and leg garments such as gown, shirt, jacket, uniform, trousers, skirt, or dress when visible. '
+      'Do not include skin, body anatomy, head, hands, feet, hair, headwear, shoes, gloves, jewelry, or unrelated accessories. '
+      'Preserve exact garment silhouette, sleeves, seams, folds, tears, stains, material, color, damage, and fit from the source. '
+      'Plain neutral background, centered and uncropped, suitable for separate 3D clothing creation.';
 
   static const _accessory =
       'Create only the selected accessory as a separate clean 3D asset reference. '

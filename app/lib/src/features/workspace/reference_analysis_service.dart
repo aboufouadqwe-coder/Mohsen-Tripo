@@ -223,6 +223,31 @@ final class MlKitReferenceAnalysisService implements ReferenceAnalysisService {
         ),
       );
 
+      final clothingRegion = poseRegion(
+        const [
+          PoseLandmarkType.leftShoulder,
+          PoseLandmarkType.rightShoulder,
+          PoseLandmarkType.leftHip,
+          PoseLandmarkType.rightHip,
+          PoseLandmarkType.leftKnee,
+          PoseLandmarkType.rightKnee,
+          PoseLandmarkType.leftAnkle,
+          PoseLandmarkType.rightAnkle,
+        ],
+        padding: 0.18,
+      );
+      if (clothingRegion != null) {
+        suggestions.add(
+          SuggestedPart(
+            key: 'clothing_outfit',
+            label: 'Clothing / Outfit',
+            kind: SmartPartKind.accessory,
+            prompt: PartPromptProfiles.clothingOutfit,
+            region: clothingRegion,
+          ),
+        );
+      }
+
       _addLimbSuggestions(suggestions, poseRegion);
     }
 
