@@ -387,7 +387,7 @@ final class _WorkspacePageState extends State<WorkspacePage> {
       final reader = repository as ReferenceImageBytesReader;
       final bytes = await reader.downloadReference(referencePath);
       if (!mounted) return null;
-      return showDialog<NormalizedRegion>(
+      return await showDialog<NormalizedRegion>(
         context: context,
         builder: (context) => PartRegionPickerDialog(
           imageBytes: bytes,
