@@ -79,7 +79,7 @@ final class _DirectModelImagePickerState extends State<DirectModelImagePicker> {
 
       final extension = _extension(image.name);
       if (!{'png', 'jpg', 'jpeg'}.contains(extension)) {
-        setState(() => _error = 'اختر صورة PNG أو JPEG فقط.');
+        setState(() => _error = 'صيغة الصورة غير مدعومة. اختر PNG أو JPG.');
         return;
       }
       if (image.sizeBytes > DirectModelImagePicker.maxBytes) {
