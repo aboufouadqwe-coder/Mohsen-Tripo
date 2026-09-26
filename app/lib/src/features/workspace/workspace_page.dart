@@ -60,7 +60,6 @@ final class WorkspacePage extends StatefulWidget {
 
 final class _WorkspacePageState extends State<WorkspacePage> {
   Project? _project;
-  AssetTemplate? _template;
   TemplateEditorController? _templateController;
   GenerationBatchController? _batchController;
   JobPollingService? _modelPollingService;
@@ -218,7 +217,6 @@ final class _WorkspacePageState extends State<WorkspacePage> {
 
       setState(() {
         _project = project;
-        _template = template;
         _templateController = templateController;
         _batchController = batchController;
         _modelPollingService = modelPollingService;
