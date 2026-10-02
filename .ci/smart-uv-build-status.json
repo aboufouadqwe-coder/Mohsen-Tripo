@@ -1,6 +1,6 @@
 {
   "deno_test": "success",
-  "deno_fmt": "failure",
+  "deno_fmt": "success",
   "deno_lint": "success",
   "flutter_pub": "success",
   "flutter_analyze": "success",
