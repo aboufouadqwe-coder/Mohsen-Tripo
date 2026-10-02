@@ -207,6 +207,18 @@ final class _ModelGenerationSettingsPanelState
                     },
             ),
             SwitchListTile(
+              key: const Key('model-smart-uv'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Smart UV'),
+              subtitle: const Text('إنشاء UV تلقائي للمجسم قبل التصدير'),
+              value: settings.exportUv,
+              onChanged: disabled
+                  ? null
+                  : (value) {
+                      widget.onChanged(settings.copyWith(exportUv: value));
+                    },
+            ),
+            SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Auto Fix'),
               subtitle: const Text('تحسين الصورة قبل إنشاء 3D'),
