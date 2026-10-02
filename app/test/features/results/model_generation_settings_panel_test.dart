@@ -35,6 +35,7 @@ void main() {
     await tester.pump();
     expect(settings.exportUv, isFalse);
 
+    await tester.ensureVisible(find.text('Low Poly'));
     await tester.tap(find.text('Low Poly'));
     await tester.pump();
     expect(settings.preset, ModelQualityPreset.lowPoly);
