@@ -50,7 +50,6 @@ type GenerateImagePartDeps = {
   insertJob: (input: Record<string, unknown>) => Promise<string>;
 };
 
-
 const metaHumanSmartPartKeys = new Set([
   "full_body_apose",
   "head",
@@ -316,8 +315,7 @@ function createDefaultDeps(): GenerateImagePartDeps {
     signReferenceUrl: (path) => createSignedObjectUrl("reference-images", path, 600),
     uploadReferenceToProvider: (apiKey, signedUrl) =>
       new TripoClient({ apiKey }).uploadImageFromUrl(signedUrl),
-    createImageToImage: (apiKey, input) =>
-      new TripoClient({ apiKey }).createImageToImage(input),
+    createImageToImage: (apiKey, input) => new TripoClient({ apiKey }).createImageToImage(input),
     insertJob: async (input) => {
       const row = await adminInsertOne<{ id: string }>("generation_jobs", input, "id");
       return row.id;

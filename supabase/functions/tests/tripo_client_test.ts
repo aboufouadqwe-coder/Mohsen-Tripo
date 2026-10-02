@@ -184,7 +184,6 @@ Deno.test("getTask accepts Tripo terminal banned status", async () => {
   assertEquals(task.progress, 0);
 });
 
-
 Deno.test("uploadImageFromUrl uploads private image and returns file token", async () => {
   const urls: string[] = [];
   const client = new TripoClient({

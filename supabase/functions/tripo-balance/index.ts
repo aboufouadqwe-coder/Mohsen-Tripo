@@ -1,11 +1,5 @@
-import {
-  executeHttp,
-  jsonResponse,
-  requireBearerToken,
-} from "../_shared/http.ts";
-import {
-  authenticateSupabaseToken,
-} from "../_shared/supabase_user.ts";
+import { executeHttp, jsonResponse, requireBearerToken } from "../_shared/http.ts";
+import { authenticateSupabaseToken } from "../_shared/supabase_user.ts";
 import { TripoClient } from "../_shared/tripo_client.ts";
 import { resolveTripoCredential } from "../_shared/tripo_credential.ts";
 

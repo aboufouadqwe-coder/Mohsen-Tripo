@@ -93,11 +93,7 @@ export class TripoClient {
       .split(";")[0]
       .trim()
       .toLowerCase();
-    const extension = mimeType === "image/jpeg"
-      ? "jpg"
-      : mimeType === "image/png"
-      ? "png"
-      : null;
+    const extension = mimeType === "image/jpeg" ? "jpg" : mimeType === "image/png" ? "png" : null;
 
     if (extension === null) {
       throw new ProviderError(

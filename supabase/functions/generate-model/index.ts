@@ -2,9 +2,9 @@ import {
   executeHttp,
   HttpError,
   jsonResponse,
+  optionalString,
   readJsonObject,
   requireBearerToken,
-  optionalString,
 } from "../_shared/http.ts";
 import {
   adminInsertOne,
@@ -67,7 +67,6 @@ type GenerateModelDeps = {
   }) => Promise<string>;
   insertJob: (input: Record<string, unknown>) => Promise<string>;
 };
-
 
 type QualityPreset = "low_poly" | "standard" | "high";
 type Topology = "adaptive" | "triangles" | "quads";
@@ -236,14 +235,11 @@ export function createGenerateModelHandler(
       const body = await readJsonObject(request);
       const assetResultId = optionalString(body, "asset_result_id")?.trim();
       const directProjectId = optionalString(body, "project_id")?.trim();
-      const directReferencePath =
-        optionalString(body, "reference_storage_path")?.trim();
+      const directReferencePath = optionalString(body, "reference_storage_path")?.trim();
 
       const hasAssetSource = Boolean(assetResultId);
-      const hasCompleteDirectSource =
-        Boolean(directProjectId) && Boolean(directReferencePath);
-      const hasPartialDirectSource =
-        Boolean(directProjectId) !== Boolean(directReferencePath);
+      const hasCompleteDirectSource = Boolean(directProjectId) && Boolean(directReferencePath);
+      const hasPartialDirectSource = Boolean(directProjectId) !== Boolean(directReferencePath);
 
       if (
         hasPartialDirectSource ||
@@ -313,8 +309,7 @@ export function createGenerateModelHandler(
         }
 
         const directPath = directReferencePath!;
-        const requiredPrefix =
-          userId + "/" + directProject.id + "/model-inputs/";
+        const requiredPrefix = userId + "/" + directProject.id + "/model-inputs/";
         if (
           directPath.includes("..") ||
           !directPath.startsWith(requiredPrefix)
@@ -429,8 +424,7 @@ function createDefaultDeps(): GenerateModelDeps {
     },
     findOwnedGenerationJob: async (userId, jobId) => {
       const row = await adminSelectOne<JobRow>("generation_jobs", {
-        select:
-          "id,project_id,provider,provider_task_id,operation,provider_credential_fingerprint",
+        select: "id,project_id,provider,provider_task_id,operation,provider_credential_fingerprint",
         id: `eq.${jobId}`,
         limit: "1",
       });
@@ -444,14 +438,11 @@ function createDefaultDeps(): GenerateModelDeps {
         providerCredentialFingerprint: row.provider_credential_fingerprint,
       };
     },
-    signGeneratedImageUrl: (path) =>
-      createSignedObjectUrl("generated-images", path),
-    signReferenceImageUrl: (path) =>
-      createSignedObjectUrl("reference-images", path),
+    signGeneratedImageUrl: (path) => createSignedObjectUrl("generated-images", path),
+    signReferenceImageUrl: (path) => createSignedObjectUrl("reference-images", path),
     uploadImageToProvider: (apiKey, signedUrl) =>
       new TripoClient({ apiKey }).uploadImageFromUrl(signedUrl),
-    createImageToModel: (apiKey, input) =>
-      new TripoClient({ apiKey }).createImageToModel(input),
+    createImageToModel: (apiKey, input) => new TripoClient({ apiKey }).createImageToModel(input),
     insertJob: async (input) => {
       const row = await adminInsertOne<{ id: string }>("generation_jobs", input, "id");
       return row.id;

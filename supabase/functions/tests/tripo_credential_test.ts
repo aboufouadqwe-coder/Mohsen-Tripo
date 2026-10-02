@@ -1,8 +1,5 @@
 import { assertEquals, assertRejects } from "@std/assert";
-import {
-  resolveTripoCredential,
-  tripoCredentialFingerprint,
-} from "../_shared/tripo_credential.ts";
+import { resolveTripoCredential, tripoCredentialFingerprint } from "../_shared/tripo_credential.ts";
 import { HttpError } from "../_shared/http.ts";
 
 Deno.test("request Tripo credential produces stable non-secret SHA-256 fingerprint", async () => {

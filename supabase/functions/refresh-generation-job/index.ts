@@ -491,8 +491,7 @@ function createDefaultDeps(): RefreshGenerationJobDeps {
         providerCredentialFingerprint: row.provider_credential_fingerprint,
       };
     },
-    getProviderTask: (apiKey, taskId) =>
-      new TripoClient({ apiKey }).getTask(taskId),
+    getProviderTask: (apiKey, taskId) => new TripoClient({ apiKey }).getTask(taskId),
     updateJob: (jobId, patch) =>
       adminUpdate(
         "generation_jobs",

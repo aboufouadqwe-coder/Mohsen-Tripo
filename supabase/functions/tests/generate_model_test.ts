@@ -45,10 +45,8 @@ const baseDeps = {
         }
         : null,
     ),
-  signGeneratedImageUrl: (_path: string) =>
-    Promise.resolve("https://signed.test/head.png"),
-  signReferenceImageUrl: (_path: string) =>
-    Promise.resolve("https://signed.test/reference.png"),
+  signGeneratedImageUrl: (_path: string) => Promise.resolve("https://signed.test/head.png"),
+  signReferenceImageUrl: (_path: string) => Promise.resolve("https://signed.test/reference.png"),
   uploadImageToProvider: (_apiKey: string, _url: string) =>
     Promise.resolve("file_token_uploaded_1"),
   createImageToModel: (_apiKey: string, _input: {
@@ -116,7 +114,6 @@ Deno.test("generate-model prefers prior Tripo image task id", async () => {
   assertEquals(body, { job_id: "job-model-1" });
   assertEquals(providerInput, "task-image-1");
 });
-
 
 Deno.test("generate-model uploads legacy image instead of reusing a task from unknown credential", async () => {
   let uploaded = false;
@@ -217,7 +214,6 @@ Deno.test("generate-model rejects face limit outside selected mode", async () =>
   assertEquals(body.error.code, "invalid_face_limit");
 });
 
-
 Deno.test("generate-model accepts an owned direct model input path", async () => {
   let signedPath = "";
   let uploadedUrl = "";
@@ -247,8 +243,7 @@ Deno.test("generate-model accepts an owned direct model input path", async () =>
   const response = await handler(
     request({
       project_id: "project-1",
-      reference_storage_path:
-        "user-1/project-1/model-inputs/model-input-1.png",
+      reference_storage_path: "user-1/project-1/model-inputs/model-input-1.png",
     }),
   );
 
@@ -272,8 +267,7 @@ Deno.test("generate-model rejects direct model input outside owned project", asy
   const response = await handler(
     request({
       project_id: "project-1",
-      reference_storage_path:
-        "user-2/project-1/model-inputs/model-input-1.png",
+      reference_storage_path: "user-2/project-1/model-inputs/model-input-1.png",
     }),
   );
 

@@ -40,7 +40,8 @@ const baseDeps = {
     ),
   signReferenceUrl: (_path: string) => Promise.resolve("https://signed.test/reference.png"),
   uploadReferenceToProvider: (_apiKey: string, _url: string) => Promise.resolve("file_reference_1"),
-  createImageToImage: (_apiKey: string, _input: { input: string; prompt: string }) => Promise.resolve("task-part-1"),
+  createImageToImage: (_apiKey: string, _input: { input: string; prompt: string }) =>
+    Promise.resolve("task-part-1"),
   insertJob: (_input: unknown) => Promise.resolve("job-part-1"),
 };
 
@@ -199,7 +200,6 @@ Deno.test("generate-image-part rejects incomplete direct prompt pair", async () 
 
   assertEquals(response.status, 400);
 });
-
 
 Deno.test("generate-image-part accepts owned cropped reference path", async () => {
   let signedPath = "";
