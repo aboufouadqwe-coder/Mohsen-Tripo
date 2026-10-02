@@ -59,6 +59,7 @@ const baseDeps = {
     geometryQuality?: "standard" | "detailed";
     texture: boolean;
     pbr: boolean;
+    exportUv: boolean;
     enableImageAutofix: boolean;
   }) => Promise.resolve("task-model-1"),
   insertJob: (_input: unknown) => Promise.resolve("job-model-1"),
@@ -176,6 +177,7 @@ Deno.test("generate-model maps low-poly quad settings to P2", async () => {
       face_limit: 12000,
       texture: true,
       pbr: false,
+      export_uv: false,
       enable_image_autofix: true,
     }),
   );
@@ -189,12 +191,14 @@ Deno.test("generate-model maps low-poly quad settings to P2", async () => {
     geometryQuality: undefined,
     texture: true,
     pbr: false,
+    exportUv: false,
     enableImageAutofix: true,
   });
   const redacted = inserted.request_payload_redacted as Record<string, unknown>;
   assertEquals(redacted.quality_preset, "low_poly");
   assertEquals(redacted.topology, "quads");
   assertEquals(redacted.face_limit, 12000);
+  assertEquals(redacted.export_uv, false);
 });
 
 Deno.test("generate-model rejects face limit outside selected mode", async () => {
