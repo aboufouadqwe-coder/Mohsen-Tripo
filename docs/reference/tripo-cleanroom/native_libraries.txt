@@ -1,0 +1,8 @@
+lib/arm64-v8a/libapp.so
+lib/arm64-v8a/libapplovin-native-crash-reporter.so
+lib/arm64-v8a/libc++_shared.so
+lib/arm64-v8a/libdartjni.so
+lib/arm64-v8a/libdatastore_shared_counter.so
+lib/arm64-v8a/libfilament_renderer.so
+lib/arm64-v8a/libflutter.so
+lib/arm64-v8a/libsqlite3.so

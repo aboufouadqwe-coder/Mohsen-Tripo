@@ -1,0 +1,17 @@
+SAFE TO USE DIRECTLY IN OUR BUILD:
+- XAPK/package metadata as reference.
+- SDK/version/platform facts.
+- File inventories and native-library names.
+- Architectural conclusions derived from those inventories.
+
+DO NOT COPY INTO OUR PRODUCT:
+- Tripo Dart/AOT or DEX code.
+- Tripo images, logos, fonts, 3D scene assets, textures, animations.
+- Tripo private/internal API routes or auth mechanisms.
+
+BUILD OUR OWN EQUIVALENTS:
+- Flutter UI.
+- Supabase repositories and Edge Functions.
+- 3D viewer integration.
+- generation orchestration and task polling.
+- original icons/assets/theme.

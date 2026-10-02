@@ -1,0 +1,79 @@
+name: Verify and release local Tripo credential APK
+
+on:
+  push:
+    branches:
+      - feature/android-mvp
+    paths:
+      - .github/workflows/build-exact-prompt-once.yml
+      - app/**
+      - supabase/functions/**
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-mvp-local-credential-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  verify-build-release:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: https://zzsjejluvufjtaxsqjme.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_nL_A-yNI-RIJMEHkna3cdg_DZ6pBAUq
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Run Edge Function contract tests
+        working-directory: supabase
+        run: deno task test
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.0
+          channel: stable
+          cache: true
+
+      - name: Resolve Flutter dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Analyze Flutter
+        working-directory: app
+        run: flutter analyze
+
+      - name: Test Flutter
+        working-directory: app
+        run: flutter test
+
+      - name: Build release APK
+        working-directory: app
+        run: |
+          flutter build apk --release \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
+
+      - name: Upload release APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mohsen-tripo-local-credential-direct-3d
+          path: app/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="android-mvp-local-tripo-${GITHUB_SHA::7}"
+          cp app/build/app/outputs/flutter-apk/app-release.apk /tmp/Mohsen-Tripo-local-tripo-direct-3d.apk
+          gh release create "$TAG" /tmp/Mohsen-Tripo-local-tripo-direct-3d.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Mohsen-Tripo Local Tripo Account + Direct Image to 3D" \
+            --notes "Adds secure on-device Tripo API key storage, Chrome/manual account connection with clipboard key import and live balance validation, per-job credential fingerprint routing, and optional phone image to 3D generation. Preserves Smart Part Planner, sequential generation, timers, mesh controls, viewer, and downloads."

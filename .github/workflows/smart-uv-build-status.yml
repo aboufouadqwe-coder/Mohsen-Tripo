@@ -1,0 +1,105 @@
+name: Smart UV Test Status
+
+on:
+  push:
+    branches:
+      - feature/android-mvp
+    paths:
+      - .github/workflows/smart-uv-build-status.yml
+      - app/**
+      - supabase/functions/**
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feature/android-mvp
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Apply canonical Deno formatting
+        working-directory: supabase
+        run: deno fmt functions
+
+      - name: Commit Deno formatting if needed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add supabase/functions
+          if ! git diff --cached --quiet; then
+            git commit -m "style: apply Deno formatting"
+            git push origin HEAD:feature/android-mvp
+          fi
+
+      - id: deno_test
+        continue-on-error: true
+        working-directory: supabase
+        run: deno task test
+
+      - id: deno_fmt
+        continue-on-error: true
+        working-directory: supabase
+        run: deno fmt --check functions
+
+      - id: deno_lint
+        continue-on-error: true
+        working-directory: supabase
+        run: deno lint functions
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.0
+          channel: stable
+          cache: true
+
+      - id: flutter_pub
+        continue-on-error: true
+        working-directory: app
+        run: flutter pub get
+
+      - id: flutter_analyze
+        continue-on-error: true
+        working-directory: app
+        run: flutter analyze
+
+      - id: flutter_test
+        continue-on-error: true
+        working-directory: app
+        run: flutter test
+
+      - name: Record outcomes on latest branch
+        if: always()
+        run: |
+          DENO_TEST="${{ steps.deno_test.outcome }}"
+          DENO_FMT="${{ steps.deno_fmt.outcome }}"
+          DENO_LINT="${{ steps.deno_lint.outcome }}"
+          FLUTTER_PUB="${{ steps.flutter_pub.outcome }}"
+          FLUTTER_ANALYZE="${{ steps.flutter_analyze.outcome }}"
+          FLUTTER_TEST="${{ steps.flutter_test.outcome }}"
+
+          git fetch origin feature/android-mvp
+          git reset --hard origin/feature/android-mvp
+          mkdir -p .ci
+          cat > .ci/smart-uv-build-status.json <<EOF
+          {
+            "deno_test": "$DENO_TEST",
+            "deno_fmt": "$DENO_FMT",
+            "deno_lint": "$DENO_LINT",
+            "flutter_pub": "$FLUTTER_PUB",
+            "flutter_analyze": "$FLUTTER_ANALYZE",
+            "flutter_test": "$FLUTTER_TEST"
+          }
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .ci/smart-uv-build-status.json
+          git commit -m "ci: record Smart UV test outcomes" || true
+          git push origin HEAD:feature/android-mvp
