@@ -1,0 +1,10 @@
+602341b48e0ab5c463d4273129fb96affb984dad ci: add temporary Smart UV history snapshot
+5e4ec4d38375203534fe450ea2a7e6831c28301d ci: record Smart UV test outcomes
+909f4b28ada1ee609f555b00d912338529e80d00 style: apply Deno formatting
+52bf063f2711b7f867f8975abfbc62a0adce37a6 ci: apply canonical Deno formatting for Smart UV
+4e8717dcdf38fe7791246f80ace111a65dfa43a5 ci: record Smart UV test outcomes
+9290b57e0a34bd7d0a76b9d5e52d153b9bb7ade8 ci: make Smart UV test diagnostics race-safe
+9a67917e0898d50d2c983c7622abe922218ced61 test: keep 3D settings controls visible after Smart UV toggle
+7b626db70e61cc0e9e068cf3d0ae5ea49a7174eb test: update gateway expectation for Smart UV
+5951e5b7fa05ebbfb29ea54a1a19753018462b8f ci: record Smart UV step outcomes
+35737b52e01f0afd18a643e494a1454f9c883a38 ci: record Smart UV build result
