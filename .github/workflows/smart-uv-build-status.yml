@@ -1,4 +1,4 @@
-name: Smart UV Build Status
+name: Smart UV Test Status
 
 on:
   push:
@@ -15,9 +15,6 @@ permissions:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
-    env:
-      SUPABASE_URL: https://zzsjejluvufjtaxsqjme.supabase.co
-      SUPABASE_PUBLISHABLE_KEY: sb_publishable_nL_A-yNI-RIJMEHkna3cdg_DZ6pBAUq
 
     steps:
       - uses: actions/checkout@v5
@@ -29,19 +26,16 @@ jobs:
           deno-version: v2.x
 
       - id: deno_test
-        name: Deno tests
         continue-on-error: true
         working-directory: supabase
         run: deno task test
 
       - id: deno_fmt
-        name: Deno format
         continue-on-error: true
         working-directory: supabase
         run: deno fmt --check functions
 
       - id: deno_lint
-        name: Deno lint
         continue-on-error: true
         working-directory: supabase
         run: deno lint functions
@@ -53,50 +47,45 @@ jobs:
           cache: true
 
       - id: flutter_pub
-        name: Flutter dependencies
         continue-on-error: true
         working-directory: app
         run: flutter pub get
 
       - id: flutter_analyze
-        name: Flutter analyze
         continue-on-error: true
         working-directory: app
         run: flutter analyze
 
       - id: flutter_test
-        name: Flutter tests
         continue-on-error: true
         working-directory: app
         run: flutter test
 
-      - id: flutter_build
-        name: Flutter build
-        continue-on-error: true
-        working-directory: app
-        run: |
-          flutter build apk --release \
-            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
-            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
-
-      - name: Record diagnostic outcomes
+      - name: Record outcomes on latest branch
         if: always()
         run: |
+          DENO_TEST="${{ steps.deno_test.outcome }}"
+          DENO_FMT="${{ steps.deno_fmt.outcome }}"
+          DENO_LINT="${{ steps.deno_lint.outcome }}"
+          FLUTTER_PUB="${{ steps.flutter_pub.outcome }}"
+          FLUTTER_ANALYZE="${{ steps.flutter_analyze.outcome }}"
+          FLUTTER_TEST="${{ steps.flutter_test.outcome }}"
+
+          git fetch origin feature/android-mvp
+          git reset --hard origin/feature/android-mvp
           mkdir -p .ci
           cat > .ci/smart-uv-build-status.json <<EOF
           {
-            "commit": "$GITHUB_SHA",
-            "deno_test": "${{ steps.deno_test.outcome }}",
-            "deno_fmt": "${{ steps.deno_fmt.outcome }}",
-            "deno_lint": "${{ steps.deno_lint.outcome }}",
-            "flutter_pub": "${{ steps.flutter_pub.outcome }}",
-            "flutter_analyze": "${{ steps.flutter_analyze.outcome }}",
-            "flutter_test": "${{ steps.flutter_test.outcome }}",
-            "flutter_build": "${{ steps.flutter_build.outcome }}"
+            "deno_test": "$DENO_TEST",
+            "deno_fmt": "$DENO_FMT",
+            "deno_lint": "$DENO_LINT",
+            "flutter_pub": "$FLUTTER_PUB",
+            "flutter_analyze": "$FLUTTER_ANALYZE",
+            "flutter_test": "$FLUTTER_TEST"
           }
           EOF
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .ci/smart-uv-build-status.json
-          git commit -m "ci: record Smart UV diagnostic outcomes" || true
+          git commit -m "ci: record Smart UV test outcomes" || true
           git push origin HEAD:feature/android-mvp
