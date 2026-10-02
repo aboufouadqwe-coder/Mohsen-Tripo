@@ -1,0 +1,31 @@
+name: Smart UV History Snapshot
+
+on:
+  push:
+    branches:
+      - feature/android-mvp
+    paths:
+      - .github/workflows/smart-uv-history.yml
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feature/android-mvp
+          fetch-depth: 20
+      - name: Record recent commits
+        run: |
+          git fetch origin feature/android-mvp
+          git reset --hard origin/feature/android-mvp
+          mkdir -p .ci
+          git log -10 --pretty=format:'%H %s' > .ci/smart-uv-history.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .ci/smart-uv-history.txt
+          git commit -m "ci: record Smart UV recent history" || true
+          git push origin HEAD:feature/android-mvp
