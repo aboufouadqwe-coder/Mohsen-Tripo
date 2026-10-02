@@ -129,6 +129,7 @@ Deno.test("image-to-model forwards configurable mesh settings", async () => {
     geometryQuality: "detailed",
     texture: true,
     pbr: true,
+    exportUv: false,
     enableImageAutofix: true,
   });
 
@@ -139,6 +140,7 @@ Deno.test("image-to-model forwards configurable mesh settings", async () => {
   assertEquals(requestedBody?.geometry_quality, "detailed");
   assertEquals(requestedBody?.texture, true);
   assertEquals(requestedBody?.pbr, true);
+  assertEquals(requestedBody?.export_uv, false);
   assertEquals(requestedBody?.enable_image_autofix, true);
 });
 
