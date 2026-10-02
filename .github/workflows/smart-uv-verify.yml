@@ -1,0 +1,66 @@
+name: Smart UV Verification
+
+on:
+  pull_request:
+    branches:
+      - feature/android-mvp
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: https://zzsjejluvufjtaxsqjme.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_nL_A-yNI-RIJMEHkna3cdg_DZ6pBAUq
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.0
+          channel: stable
+          cache: true
+
+      - name: Flutter dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Flutter analyze
+        working-directory: app
+        run: flutter analyze
+
+      - name: Flutter tests
+        working-directory: app
+        run: flutter test
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Deno contract tests
+        working-directory: supabase
+        run: deno task test
+
+      - name: Deno format check
+        working-directory: supabase
+        run: deno fmt --check functions
+
+      - name: Deno lint
+        working-directory: supabase
+        run: deno lint functions
+
+      - name: Build release APK
+        working-directory: app
+        run: |
+          flutter build apk --release \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
+
+      - name: Upload Smart UV APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mohsen-tripo-smart-uv-apk
+          path: app/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 3
