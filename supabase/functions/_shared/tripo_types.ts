@@ -25,6 +25,7 @@ export type TripoCreateImageToModelRequest = {
   geometryQuality?: "standard" | "detailed";
   texture?: boolean;
   pbr?: boolean;
+  exportUv?: boolean;
   enableImageAutofix?: boolean;
 };
 
