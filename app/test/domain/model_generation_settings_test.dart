@@ -9,6 +9,7 @@ void main() {
       faceLimit: 12000,
       texture: true,
       pbr: false,
+      exportUv: false,
       enableImageAutofix: true,
     );
 
@@ -18,6 +19,7 @@ void main() {
       'face_limit': 12000,
       'texture': true,
       'pbr': false,
+      'export_uv': false,
       'enable_image_autofix': true,
     });
     expect(settings.maxFaceLimit, 25000);
@@ -32,6 +34,13 @@ void main() {
     );
 
     expect(settings.toFunctionBody().containsKey('face_limit'), isFalse);
+  });
+
+  test('Smart UV is enabled by default', () {
+    const settings = ModelGenerationSettings();
+
+    expect(settings.exportUv, isTrue);
+    expect(settings.toFunctionBody()['export_uv'], isTrue);
   });
 
   test('PBR is disabled in payload when texture is disabled', () {
