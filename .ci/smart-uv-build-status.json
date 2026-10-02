@@ -1,1 +1,8 @@
-{"commit":"a6d85b46358cefb5ad83b737894a68b619f124d9","status":"failure","release_tag":""}
+{
+  "deno_test": "success",
+  "deno_fmt": "failure",
+  "deno_lint": "success",
+  "flutter_pub": "success",
+  "flutter_analyze": "success",
+  "flutter_test": "success"
+}
