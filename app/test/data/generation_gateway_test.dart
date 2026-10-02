@@ -191,6 +191,7 @@ void main() {
         faceLimit: 12000,
         texture: true,
         pbr: false,
+        exportUv: false,
         enableImageAutofix: true,
       ),
     );
@@ -204,6 +205,7 @@ void main() {
       'face_limit': 12000,
       'texture': true,
       'pbr': false,
+      'export_uv': false,
       'enable_image_autofix': true,
     });
   });
