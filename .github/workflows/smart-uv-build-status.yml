@@ -13,7 +13,7 @@ permissions:
   contents: write
 
 jobs:
-  verify-build:
+  diagnose:
     runs-on: ubuntu-latest
     env:
       SUPABASE_URL: https://zzsjejluvufjtaxsqjme.supabase.co
@@ -28,15 +28,21 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Deno tests
+      - id: deno_test
+        name: Deno tests
+        continue-on-error: true
         working-directory: supabase
         run: deno task test
 
-      - name: Deno format
+      - id: deno_fmt
+        name: Deno format
+        continue-on-error: true
         working-directory: supabase
         run: deno fmt --check functions
 
-      - name: Deno lint
+      - id: deno_lint
+        name: Deno lint
+        continue-on-error: true
         working-directory: supabase
         run: deno lint functions
 
@@ -46,50 +52,51 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Flutter dependencies
+      - id: flutter_pub
+        name: Flutter dependencies
+        continue-on-error: true
         working-directory: app
         run: flutter pub get
 
-      - name: Flutter analyze
+      - id: flutter_analyze
+        name: Flutter analyze
+        continue-on-error: true
         working-directory: app
         run: flutter analyze
 
-      - name: Flutter tests
+      - id: flutter_test
+        name: Flutter tests
+        continue-on-error: true
         working-directory: app
         run: flutter test
 
-      - name: Build APK
+      - id: flutter_build
+        name: Flutter build
+        continue-on-error: true
         working-directory: app
         run: |
           flutter build apk --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
 
-      - name: Publish Smart UV release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          TAG="smart-uv-${GITHUB_SHA::7}"
-          cp app/build/app/outputs/flutter-apk/app-release.apk /tmp/Mohsen-Tripo-Smart-UV.apk
-          gh release create "$TAG" /tmp/Mohsen-Tripo-Smart-UV.apk \
-            --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
-            --title "Mohsen-Tripo Smart UV" \
-            --notes "Smart UV build with Tripo export_uv support."
-          echo "$TAG" > /tmp/smart_uv_release_tag
-
-      - name: Record build result
+      - name: Record diagnostic outcomes
         if: always()
         run: |
           mkdir -p .ci
-          STATUS="${{ job.status }}"
-          TAG=""
-          if [ -f /tmp/smart_uv_release_tag ]; then
-            TAG="$(cat /tmp/smart_uv_release_tag)"
-          fi
-          printf '{"commit":"%s","status":"%s","release_tag":"%s"}\n' "$GITHUB_SHA" "$STATUS" "$TAG" > .ci/smart-uv-build-status.json
+          cat > .ci/smart-uv-build-status.json <<EOF
+          {
+            "commit": "$GITHUB_SHA",
+            "deno_test": "${{ steps.deno_test.outcome }}",
+            "deno_fmt": "${{ steps.deno_fmt.outcome }}",
+            "deno_lint": "${{ steps.deno_lint.outcome }}",
+            "flutter_pub": "${{ steps.flutter_pub.outcome }}",
+            "flutter_analyze": "${{ steps.flutter_analyze.outcome }}",
+            "flutter_test": "${{ steps.flutter_test.outcome }}",
+            "flutter_build": "${{ steps.flutter_build.outcome }}"
+          }
+          EOF
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .ci/smart-uv-build-status.json
-          git commit -m "ci: record Smart UV build result" || exit 0
+          git commit -m "ci: record Smart UV diagnostic outcomes" || true
           git push origin HEAD:feature/android-mvp
