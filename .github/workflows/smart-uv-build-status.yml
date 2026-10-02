@@ -1,0 +1,95 @@
+name: Smart UV Build Status
+
+on:
+  push:
+    branches:
+      - feature/android-mvp
+    paths:
+      - .github/workflows/smart-uv-build-status.yml
+      - app/**
+      - supabase/functions/**
+
+permissions:
+  contents: write
+
+jobs:
+  verify-build:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: https://zzsjejluvufjtaxsqjme.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_nL_A-yNI-RIJMEHkna3cdg_DZ6pBAUq
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feature/android-mvp
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Deno tests
+        working-directory: supabase
+        run: deno task test
+
+      - name: Deno format
+        working-directory: supabase
+        run: deno fmt --check functions
+
+      - name: Deno lint
+        working-directory: supabase
+        run: deno lint functions
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.0
+          channel: stable
+          cache: true
+
+      - name: Flutter dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Flutter analyze
+        working-directory: app
+        run: flutter analyze
+
+      - name: Flutter tests
+        working-directory: app
+        run: flutter test
+
+      - name: Build APK
+        working-directory: app
+        run: |
+          flutter build apk --release \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
+
+      - name: Publish Smart UV release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="smart-uv-${GITHUB_SHA::7}"
+          cp app/build/app/outputs/flutter-apk/app-release.apk /tmp/Mohsen-Tripo-Smart-UV.apk
+          gh release create "$TAG" /tmp/Mohsen-Tripo-Smart-UV.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Mohsen-Tripo Smart UV" \
+            --notes "Smart UV build with Tripo export_uv support."
+          echo "$TAG" > /tmp/smart_uv_release_tag
+
+      - name: Record build result
+        if: always()
+        run: |
+          mkdir -p .ci
+          STATUS="${{ job.status }}"
+          TAG=""
+          if [ -f /tmp/smart_uv_release_tag ]; then
+            TAG="$(cat /tmp/smart_uv_release_tag)"
+          fi
+          printf '{"commit":"%s","status":"%s","release_tag":"%s"}\n' "$GITHUB_SHA" "$STATUS" "$TAG" > .ci/smart-uv-build-status.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .ci/smart-uv-build-status.json
+          git commit -m "ci: record Smart UV build result" || exit 0
+          git push origin HEAD:feature/android-mvp
