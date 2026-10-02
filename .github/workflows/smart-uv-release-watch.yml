@@ -1,0 +1,49 @@
+name: Smart UV Release Watch
+
+on:
+  push:
+    branches:
+      - feature/android-mvp
+    paths:
+      - .github/workflows/smart-uv-release-watch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feature/android-mvp
+
+      - name: Wait for and verify APK release asset
+        run: |
+          TAG="android-mvp-local-tripo-909f4b2"
+          ASSET="Mohsen-Tripo-local-tripo-direct-3d.apk"
+          URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$ASSET"
+          STATUS="not_found"
+          SHA256=""
+          BYTES="0"
+
+          for i in $(seq 1 36); do
+            if curl -L --fail --silent --show-error "$URL" -o /tmp/smart-uv.apk; then
+              STATUS="success"
+              SHA256="$(sha256sum /tmp/smart-uv.apk | awk '{print $1}')"
+              BYTES="$(stat -c '%s' /tmp/smart-uv.apk)"
+              break
+            fi
+            sleep 10
+          done
+
+          git fetch origin feature/android-mvp
+          git reset --hard origin/feature/android-mvp
+          mkdir -p .ci
+          printf '{"status":"%s","tag":"%s","asset":"%s","bytes":%s,"sha256":"%s"}\n'             "$STATUS" "$TAG" "$ASSET" "$BYTES" "$SHA256"             > .ci/smart-uv-release-status.json
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .ci/smart-uv-release-status.json
+          git commit -m "ci: record Smart UV release verification" || true
+          git push origin HEAD:feature/android-mvp
