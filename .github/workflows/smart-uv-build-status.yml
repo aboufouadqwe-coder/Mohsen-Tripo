@@ -25,6 +25,20 @@ jobs:
         with:
           deno-version: v2.x
 
+      - name: Apply canonical Deno formatting
+        working-directory: supabase
+        run: deno fmt functions
+
+      - name: Commit Deno formatting if needed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add supabase/functions
+          if ! git diff --cached --quiet; then
+            git commit -m "style: apply Deno formatting"
+            git push origin HEAD:feature/android-mvp
+          fi
+
       - id: deno_test
         continue-on-error: true
         working-directory: supabase
