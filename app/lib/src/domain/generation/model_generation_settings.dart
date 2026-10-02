@@ -17,6 +17,7 @@ final class ModelGenerationSettings {
     this.faceLimit = 100000,
     this.texture = true,
     this.pbr = true,
+    this.exportUv = true,
     this.enableImageAutofix = false,
   });
 
@@ -25,6 +26,7 @@ final class ModelGenerationSettings {
   final int? faceLimit;
   final bool texture;
   final bool pbr;
+  final bool exportUv;
   final bool enableImageAutofix;
 
   int get minFaceLimit {
@@ -61,6 +63,7 @@ final class ModelGenerationSettings {
     bool clearFaceLimit = false,
     bool? texture,
     bool? pbr,
+    bool? exportUv,
     bool? enableImageAutofix,
   }) {
     return ModelGenerationSettings(
@@ -69,6 +72,7 @@ final class ModelGenerationSettings {
       faceLimit: clearFaceLimit ? null : (faceLimit ?? this.faceLimit),
       texture: texture ?? this.texture,
       pbr: pbr ?? this.pbr,
+      exportUv: exportUv ?? this.exportUv,
       enableImageAutofix: enableImageAutofix ?? this.enableImageAutofix,
     );
   }
@@ -87,6 +91,7 @@ final class ModelGenerationSettings {
       },
       'texture': texture,
       'pbr': pbr && texture,
+      'export_uv': exportUv,
       'enable_image_autofix': enableImageAutofix,
     };
 

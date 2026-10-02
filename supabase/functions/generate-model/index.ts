@@ -62,6 +62,7 @@ type GenerateModelDeps = {
     geometryQuality?: "standard" | "detailed";
     texture: boolean;
     pbr: boolean;
+    exportUv: boolean;
     enableImageAutofix: boolean;
   }) => Promise<string>;
   insertJob: (input: Record<string, unknown>) => Promise<string>;
@@ -78,6 +79,7 @@ type ModelProviderSettings = {
   geometryQuality?: "standard" | "detailed";
   texture: boolean;
   pbr: boolean;
+  exportUv: boolean;
   enableImageAutofix: boolean;
 };
 
@@ -154,6 +156,7 @@ function providerSettingsFromBody(
   );
   const texture = optionalBoolean(body, "texture", true);
   const requestedPbr = optionalBoolean(body, "pbr", true);
+  const exportUv = optionalBoolean(body, "export_uv", true);
   const enableImageAutofix = optionalBoolean(
     body,
     "enable_image_autofix",
@@ -216,6 +219,7 @@ function providerSettingsFromBody(
       geometryQuality,
       texture,
       pbr: texture && requestedPbr,
+      exportUv,
       enableImageAutofix,
     },
   };
@@ -359,6 +363,7 @@ export function createGenerateModelHandler(
           geometry_quality: settings.provider.geometryQuality ?? null,
           texture: settings.provider.texture,
           pbr: settings.provider.pbr,
+          export_uv: settings.provider.exportUv,
           enable_image_autofix: settings.provider.enableImageAutofix,
         },
       });

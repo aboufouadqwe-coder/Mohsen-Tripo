@@ -156,6 +156,7 @@ export class TripoClient {
       model: request.model ?? MODEL_3D,
       texture: request.texture ?? true,
       pbr: request.pbr ?? true,
+      export_uv: request.exportUv ?? true,
       enable_image_autofix: request.enableImageAutofix ?? false,
     };
 
