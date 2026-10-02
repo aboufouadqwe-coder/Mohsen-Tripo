@@ -27,6 +27,14 @@ void main() {
       ),
     );
 
+    expect(settings.exportUv, isTrue);
+    final smartUv = find.byKey(const Key('model-smart-uv'));
+    expect(smartUv, findsOneWidget);
+    await tester.ensureVisible(smartUv);
+    await tester.tap(smartUv);
+    await tester.pump();
+    expect(settings.exportUv, isFalse);
+
     await tester.tap(find.text('Low Poly'));
     await tester.pump();
     expect(settings.preset, ModelQualityPreset.lowPoly);
