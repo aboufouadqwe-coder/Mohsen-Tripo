@@ -30,6 +30,8 @@ jobs:
         run: flutter config --enable-windows-desktop
       - name: Generate missing Windows runner
         run: flutter create --platforms=windows --project-name mohsen_tripo .
+      - name: Remove generated Flutter sample test
+        run: Remove-Item test/widget_test.dart -ErrorAction SilentlyContinue
       - name: Resolve dependencies
         run: flutter pub get
       - name: Analyze Dart
