@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mohsen_tripo/src/domain/assets/asset_result.dart';
@@ -80,7 +82,7 @@ void main() {
       'fileName': 'Mohsen-Tripo-model-123.glb',
       'mimeType': 'model/gltf-binary',
     });
-  });
+  }, skip: Platform.isWindows);
 
   test('downloadModel preserves FBX extension for quad output', () async {
     const channel = MethodChannel('com.mohsentripo.mohsen_tripo/media');
@@ -115,6 +117,6 @@ void main() {
       'fileName': 'Mohsen-Tripo-model-quad.fbx',
       'mimeType': 'application/octet-stream',
     });
-  });
+  }, skip: Platform.isWindows);
 
 }

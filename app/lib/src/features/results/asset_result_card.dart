@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 
@@ -174,7 +176,9 @@ final class AssetResultCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'اسحب لتدوير المجسم، واستخدم إصبعين للتكبير والتصغير.',
+                    Platform.isWindows
+                        ? 'نزّل المجسم لفتحه في Blender أو أي عارض GLB على الكمبيوتر.'
+                        : 'اسحب لتدوير المجسم، واستخدم إصبعين للتكبير والتصغير.',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ] else if (modelAsset.isFbx) ...[
@@ -249,6 +253,17 @@ final class _LazyModelPreviewState extends State<_LazyModelPreview> {
 
   @override
   Widget build(BuildContext context) {
+    if (Platform.isWindows) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Text(
+            'العرض ثلاثي الأبعاد داخل التطبيق غير متاح بعد على Windows. '
+            'استخدم زر تنزيل المجسم لفتحه في Blender أو برنامج 3D على الكمبيوتر.',
+          ),
+        ),
+      );
+    }
     if (!_visible) {
       return FilledButton.tonalIcon(
         onPressed: () {

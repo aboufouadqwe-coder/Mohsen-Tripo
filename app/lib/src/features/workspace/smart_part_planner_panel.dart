@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 
 import '../../domain/smart_parts/smart_part.dart';
@@ -103,8 +105,10 @@ final class _SmartPartPlannerPanelState extends State<SmartPartPlannerPanel> {
               ],
             ),
             const SizedBox(height: 6),
-            const Text(
-              'يحلل الوجه ووضعية الجسم محليًا على الهاتف، ثم يقترح أجزاء وSmart Prompts مناسبة لمسار 3D/MetaHuman.',
+            Text(
+              Platform.isWindows
+                  ? 'على Windows تتوفر قوالب أجزاء قابلة للتعديل، بدون كشف آلي للوجه أو وضعية الجسم حاليًا.'
+                  : 'يحلل الوجه ووضعية الجسم محليًا على الهاتف، ثم يقترح أجزاء وSmart Prompts مناسبة لمسار 3D/MetaHuman.',
             ),
             const SizedBox(height: 12),
             FilledButton.icon(
@@ -120,12 +124,16 @@ final class _SmartPartPlannerPanelState extends State<SmartPartPlannerPanel> {
               label: Text(
                 widget.loading
                     ? 'جارٍ تحليل الصورة…'
-                    : 'تحليل الصورة واقتراح الأجزاء',
+                    : Platform.isWindows
+                        ? 'عرض قوالب الأجزاء'
+                        : 'تحليل الصورة واقتراح الأجزاء',
               ),
             ),
             if (analysis != null) ...[
               const SizedBox(height: 12),
-              Text(analysis.summary),
+              Text(Platform.isWindows
+                  ? 'اختر الأجزاء التي تريد توليدها؛ لم يتم إجراء تحليل آلي للصورة.'
+                  : analysis.summary),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 6,
