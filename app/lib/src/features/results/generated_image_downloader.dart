@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../domain/assets/asset_result.dart';
 
@@ -75,6 +76,11 @@ final class GeneratedImageDownloader {
     final mimeType =
         asset.isFbx ? 'application/octet-stream' : 'model/gltf-binary';
     final fileName = 'Mohsen-Tripo-${asset.id}.$extension';
+    if (Platform.isWindows) {
+      await _saveModelToDesktop(signedUrl, fileName);
+      return;
+    }
+
     final savedUri = await _channel.invokeMethod<String>(
       'saveModelFromUrl',
       {
@@ -109,11 +115,57 @@ final class GeneratedImageDownloader {
     }
   }
 
+  // The Android MethodChannel is intentionally not invoked on Windows.
+  static Future<Directory> _desktopDownloadDirectory() async {
+    final downloads = await getDownloadsDirectory();
+    final fallback = await getApplicationDocumentsDirectory();
+    final root = downloads ?? fallback;
+    final directory = Directory('${root.path}${Platform.pathSeparator}Mohsen-Tripo');
+    await directory.create(recursive: true);
+    return directory;
+  }
+
+  static Future<void> _saveModelToDesktop(String url, String fileName) async {
+    final directory = await _desktopDownloadDirectory();
+    final target = File('${directory.path}${Platform.pathSeparator}$fileName');
+    final partial = File('${target.path}.part');
+    final client = HttpClient();
+    try {
+      final request = await client.getUrl(Uri.parse(url));
+      final response = await request.close();
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw HttpException('Model download failed: HTTP ${response.statusCode}');
+      }
+      final sink = partial.openWrite();
+      try {
+        await sink.addStream(response);
+        await sink.flush();
+      } finally {
+        await sink.close();
+      }
+      if (await partial.length() == 0) {
+        throw StateError('Downloaded model is empty.');
+      }
+      if (await target.exists()) await target.delete();
+      await partial.rename(target.path);
+    } finally {
+      client.close(force: true);
+      if (await partial.exists()) await partial.delete();
+    }
+  }
+
   static Future<void> _saveToGallery({
     required Uint8List bytes,
     required String fileName,
     required String mimeType,
   }) async {
+    if (Platform.isWindows) {
+      final directory = await _desktopDownloadDirectory();
+      final file = File('${directory.path}${Platform.pathSeparator}$fileName');
+      await file.writeAsBytes(bytes, flush: true);
+      return;
+    }
+
     final savedUri = await _channel.invokeMethod<String>(
       'saveImage',
       {
