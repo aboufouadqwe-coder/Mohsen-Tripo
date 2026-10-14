@@ -15,7 +15,12 @@ final class DesktopReferenceAnalysisService implements ReferenceAnalysisService 
 
   @override
   Future<ReferenceAnalysis> analyze(Uint8List bytes) async {
-    final decoded = img.decodeImage(bytes);
+    img.Image? decoded;
+    try {
+      decoded = img.decodeImage(bytes);
+    } catch (_) {
+      throw StateError('Reference image could not be decoded.');
+    }
     if (decoded == null || decoded.width <= 0 || decoded.height <= 0) {
       throw StateError('Reference image could not be decoded.');
     }
