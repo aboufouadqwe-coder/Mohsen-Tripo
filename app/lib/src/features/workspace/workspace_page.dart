@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 
@@ -26,6 +27,7 @@ import '../tripo/tripo_account_controller.dart';
 import 'generation_batch_controller.dart';
 import 'job_polling_service.dart';
 import 'smart_part_planner_panel.dart';
+import 'desktop_reference_analysis_service.dart';
 import 'reference_analysis_service.dart';
 import 'part_region_picker.dart';
 import 'reference_image_picker.dart';
@@ -76,8 +78,9 @@ final class _WorkspacePageState extends State<WorkspacePage> {
   TripoCreditBalance? _creditBalance;
   bool _balanceLoading = false;
   TripoAccountController? _tripoAccountController;
-  final ReferenceAnalysisService _referenceAnalysisService =
-      const MlKitReferenceAnalysisService();
+  final ReferenceAnalysisService _referenceAnalysisService = Platform.isWindows
+      ? const DesktopReferenceAnalysisService()
+      : const MlKitReferenceAnalysisService();
   ReferenceAnalysis? _referenceAnalysis;
   bool _referenceAnalyzing = false;
 
@@ -615,12 +618,16 @@ final class _WorkspacePageState extends State<WorkspacePage> {
       await _imageDownloader.download(asset, signedUrl);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حفظ الصورة في معرض الهاتف.')),
+        SnackBar(content: Text(Platform.isWindows
+            ? 'تم حفظ الصورة في Downloads/Mohsen-Tripo.'
+            : 'تم حفظ الصورة في معرض الهاتف.')),
       );
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر تنزيل الصورة إلى الهاتف.')),
+        SnackBar(content: Text(Platform.isWindows
+            ? 'تعذر تنزيل الصورة إلى الكمبيوتر.'
+            : 'تعذر تنزيل الصورة إلى الهاتف.')),
       );
     }
   }
@@ -640,7 +647,9 @@ final class _WorkspacePageState extends State<WorkspacePage> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر تنزيل المجسم إلى الهاتف.')),
+        SnackBar(content: Text(Platform.isWindows
+            ? 'تعذر تنزيل المجسم إلى الكمبيوتر.'
+            : 'تعذر تنزيل المجسم إلى الهاتف.')),
       );
     }
   }
