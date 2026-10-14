@@ -150,6 +150,34 @@ Before creating a paid Supabase project:
 
 Paid Tripo calls are limited to the manual smoke test.
 
+
+## Windows x64 desktop (experimental)
+
+The same Flutter client can now be built as a **native Windows desktop application**, not an APK or Android emulator. The GitHub Actions workflow [Windows desktop](.github/workflows/windows-desktop.yml) automatically builds branch `feature/windows-desktop` and uploads a **Mohsen-Tripo-Windows-x64** artifact containing a portable ZIP. Unzip the entire archive and run `mohsen_tripo.exe`; keep its DLLs and `data` folder alongside the EXE.
+
+To build locally on Windows, install Flutter 3.47.0 and Visual Studio with **Desktop development with C++**:
+
+```powershell
+cd app
+flutter config --enable-windows-desktop
+flutter create --platforms=windows --project-name mohsen_tripo .
+flutter pub get
+flutter analyze
+flutter test
+flutter build windows --release `
+  --dart-define=SUPABASE_URL=https://zzsjejluvufjtaxsqjme.supabase.co `
+  --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_nL_A-yNI-RIJMEHkna3cdg_DZ6pBAUq
+```
+
+The generated EXE is under `app/build/windows/x64/runner/Release/` (relative to the repository root). Distribute the **whole Release directory**; the EXE is not standalone.
+
+Desktop compatibility notes:
+- Project management, reference upload, generation and Tripo/Supabase networking share the Android backend.
+- On Windows, image and GLB/FBX downloads are saved under `Downloads/Mohsen-Tripo`, with documents-folder fallback.
+- ML Kit pose/face detection is **Android-only** in this client. Windows offers **manual part templates**, not fake detections.
+- The embedded `model_viewer_plus` model preview is not compatible with the native Windows runner. Download the model and open it in Blender or another local model viewer.
+- Tripo keys remain stored locally in secure storage. **Never** compile a backend Tripo API secret into the Windows executable. Production auth/backend and native desktop operation still require smoke-testing.
+
 ## Source of truth
 
 - `docs/superpowers/specs/2026-09-24-mohsen-tripo-android-design.md`
