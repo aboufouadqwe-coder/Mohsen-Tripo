@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mohsen_tripo/src/data/supabase/results_repository.dart';
@@ -268,7 +270,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('نموذج 3D'), findsWidgets);
-    expect(find.textContaining('اسحب لتدوير المجسم'), findsOneWidget);
+    expect(find.textContaining(Platform.isWindows ? 'نزّل المجسم لفتحه' : 'اسحب لتدوير المجسم'), findsOneWidget);
     expect(find.text('تنزيل المجسم'), findsOneWidget);
 
     await tester.tap(find.text('تنزيل المجسم'));
