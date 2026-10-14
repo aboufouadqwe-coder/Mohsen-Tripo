@@ -1,0 +1,59 @@
+name: Windows desktop
+
+on:
+  push:
+    branches:
+      - feature/windows-desktop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-x64:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: app
+    env:
+      # Supabase publishable values only. Never include TRIPO_API_KEY.
+      SUPABASE_URL: https://zzsjejluvufjtaxsqjme.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_nL_A-yNI-RIJMEHkna3cdg_DZ6pBAUq
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.0'
+          channel: stable
+          cache: true
+      - name: Enable Flutter Windows desktop
+        run: flutter config --enable-windows-desktop
+      - name: Generate missing Windows runner
+        run: flutter create --platforms=windows --project-name mohsen_tripo .
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Analyze Dart
+        run: flutter analyze
+      - name: Unit tests
+        run: flutter test
+      - name: Build native Windows x64 app
+        run: |
+          flutter build windows --release `
+            --dart-define=SUPABASE_URL="$env:SUPABASE_URL" `
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="$env:SUPABASE_PUBLISHABLE_KEY"
+      - name: Verify executable and package portable distribution
+        working-directory: .
+        shell: pwsh
+        run: |
+          $release = "app/build/windows/x64/runner/Release"
+          if (!(Test-Path "$release/mohsen_tripo.exe")) {
+            throw "Windows executable was not produced"
+          }
+          Compress-Archive -Path "$release/*" -DestinationPath "Mohsen-Tripo-Windows-x64.zip" -Force
+      - name: Upload portable Windows app
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mohsen-Tripo-Windows-x64
+          path: Mohsen-Tripo-Windows-x64.zip
+          if-no-files-found: error
+          retention-days: 14
